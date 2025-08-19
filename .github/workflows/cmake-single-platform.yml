@@ -1,0 +1,68 @@
+# Copyright (c) 2025 Ghostlab42 LLC & GBFans LLC
+# Licensed under the MIT License. See LICENSE file for details.
+
+---
+name: Build
+
+"on":
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  BUILD_TYPE: Release
+  PICO_BOARD: pico
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install toolchain
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build gcc-arm-none-eabi libnewlib-arm-none-eabi \
+            libstdc++-arm-none-eabi-newlib python3 pkg-config libusb-1.0-0-dev
+
+      - name: Configure (SOFTWARE/)
+        working-directory: SOFTWARE
+        run: |
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DPICO_BOARD=${{ env.PICO_BOARD }} \
+            -DPICO_SDK_FETCH_FROM_GIT=1
+
+      - name: Build project
+        working-directory: SOFTWARE
+        run: cmake --build build -- -v
+
+      - name: Collect UF2 artifacts
+        if: always()
+        run: |
+          mkdir -p SOFTWARE/artifacts
+          if [ -d SOFTWARE/build ]; then
+            find SOFTWARE/build -type f -name "*.uf2" -exec cp {} SOFTWARE/artifacts/ \;
+          else
+            echo "No SOFTWARE/build directory found; skipping UF2 collection."
+          fi
+
+      - name: Upload UF2
+        if: always() && hashFiles('SOFTWARE/artifacts/*.uf2') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: pico-uf2
+          path: SOFTWARE/artifacts/*.uf2
+
+      - name: Show CMake logs on failure
+        if: failure()
+        run: |
+          [ -f SOFTWARE/build/CMakeCache.txt ] && sed -n '1,200p' SOFTWARE/build/CMakeCache.txt || true
+          [ -f SOFTWARE/build/CMakeFiles/CMakeOutput.log ] && tail -n 200 SOFTWARE/build/CMakeFiles/CMakeOutput.log || true
+          [ -f SOFTWARE/build/CMakeFiles/CMakeError.log ] && cat SOFTWARE/build/CMakeFiles/CMakeError.log || true
