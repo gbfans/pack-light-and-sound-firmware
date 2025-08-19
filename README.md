@@ -5,7 +5,7 @@ Licensed under the MIT License. See LICENSE file for details.
 
 # GBFans.com Pack Light and Sound Firmware
 
-[![Build](https://github.com/ajquick/klystron/actions/workflows/cmake-single-platform.yml/badge.svg)](https://github.com/ajquick/klystron/actions/workflows/cmake-single-platform.yml)
+[![Build](https://github.com/gbfans/pack-light-and-sound-firmware/actions/workflows/cmake-single-platform.yml/badge.svg)](https://github.com/gbfans/pack-light-and-sound-firmware/actions/workflows/cmake-single-platform.yml)
 
 The GBFans.com Pack Light and Sound Firmware is a firmware package for
 controlling Ghostbusters proton pack lighting and sound effects. It runs
