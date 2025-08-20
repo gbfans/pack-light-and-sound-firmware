@@ -12,6 +12,7 @@
 #include "monitors.h"
 #include "powercell_sequences.h"
 #include "cyclotron_sequences.h"
+#include "party_sequences.h"
 #include "sound.h"
 #include "sound_module.h"
 #include "heat.h"
@@ -55,6 +56,10 @@ void pack_state_set_state(PackState state) { pack_ctx.state = state; }
 PackState pack_state_get_state(void) { return pack_ctx.state; }
 
 void pack_state_process(void) {
+    song_monitor();
+    if (pack_ctx.state != PS_OFF && party_mode_is_active()) {
+        party_mode_stop();
+    }
     firing_now = (((pack_ctx.state == PS_FIRE) ||
                    (pack_ctx.state == PS_SLIME_FIRE) ||
                    (pack_ctx.state == PS_OVERHEAT)) &&
@@ -79,17 +84,18 @@ void pack_state_process(void) {
             pack_state_set_mode(PACK_MODE_PROTON_STREAM);
         }
         if (!song_is_playing() && pu_sw()) {
+            if (party_mode_is_active()) party_mode_stop();
             pack_state_set_state(PS_IDLE);
             pack_combo_startup();
         } else if (!song_is_playing() && pack_pu_req()) {
+            if (party_mode_is_active()) party_mode_stop();
             clear_pack_pu_req();
             pack_state_set_state(PS_PACK_STANDBY);
             pack_combo_startup();
         } else if (!song_is_playing() && wand_standby_sw()) {
+            if (party_mode_is_active()) party_mode_stop();
             pack_state_set_state(PS_WAND_STANDBY);
             pack_combo_startup();
-        } else {
-            song_monitor();
         }
         clear_fire_tap();
         break;
@@ -105,7 +111,6 @@ void pack_state_process(void) {
             pack_state_set_state(PS_OFF);
             pack_combo_powerdown();
         } else {
-            song_monitor();
             hum_monitor();
             adj_monitor();
         }
@@ -126,7 +131,6 @@ void pack_state_process(void) {
                 pack_combo_powerdown();
             }
         } else {
-            song_monitor();
             hum_monitor();
             adj_monitor();
         }
@@ -156,7 +160,6 @@ void pack_state_process(void) {
             monster_fire();
             fire_department(0);
         } else {
-            song_monitor();
             hum_monitor();
             monster_monitor();
             adj_monitor();

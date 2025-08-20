@@ -93,7 +93,6 @@ void cy_rotate(bool seq_init) {
     static uint16_t delta_accum = 0; // holds the delta value that should grow as the speed increases
     static uint8_t after_set = 0; // the index of the after set to use, 0-3
     if (seq_init) {
-        clear_strip(&cyclotron_strip); // clear the cyclotron vars
         // init local variables
         pos_accum = 0; // start at 0
         delta_accum = delta_1; // start with the slowest speed
@@ -134,10 +133,7 @@ void cy_rotate(bool seq_init) {
             delta_accum += (increment > 0) ? increment : 1;
         }
         if (pos_accum >= 1<<12) { // the position accumulator has an integer portion, we need to shift the LEDs
-            // blank out the previous position
-            for (int i=0; i<cyclotron_strip.num_pixels; i++) {
-                cyclotron_strip.grbx[i] = 0; // clear the cyclotron LEDs
-            }
+            uint16_t prev_seq = cyclotron_seq_num;
             // add the integer portion to the cyclotron_seq_num
             cyclotron_seq_num += (pos_accum >> 12); // add the integer portion of the position to the sequence number
             if (cyclotron_seq_num >= cyclotron_strip.num_pixels) { // if the sequence number is greater than or equal to the number of pixels, wrap around
@@ -145,6 +141,10 @@ void cy_rotate(bool seq_init) {
             }
             // clear out the integer portion that was added to the position
             pos_accum &= 0x0FFF; // keep only the fractional portion of the position
+            // clear the previous position
+            for (int i=0; i<cyclotron_after_set_size; i++) {
+                cyclotron_strip.grbx[(prev_seq + i) % cyclotron_strip.num_pixels] = 0; // clear the previous LEDs
+            }
             // turn on the new position
             for(int i=0; i<cyclotron_after_set_size; i++) {
                 cyclotron_strip.grbx[((cyclotron_seq_num)+ i) % cyclotron_strip.num_pixels] = cyclotron_after_set[after_set+(cy_color_set*3)][i]; // turn on a set of LEDs
@@ -159,7 +159,6 @@ void cy_rotate_afterx4(bool seq_init) {
     static uint16_t pos_accum = 0; // accumulator for the position to hold onto the fractional portion of the position, fractional in lower 12 bits, integer in upper 4 bits
     static uint16_t delta_accum = 0; // holds the delta value that should grow as the speed increases
     if (seq_init) {
-        clear_strip(&cyclotron_strip); // clear the cyclotron vars
         // init local variables
         pos_accum = 0; // start at 0
         delta_accum = delta_1; // start with the slowest speed
@@ -177,18 +176,16 @@ void cy_rotate_afterx4(bool seq_init) {
         }
 //        if (pos_accum >= 1<<12) { // the position accumulator has an integer portion, we need to shift the LEDs
         if (pos_accum >= 1<<14) { // the position accumulator has an integer portion, we need to shift the LEDs
-            // blank out the previous position
-            for (int i=0; i<cyclotron_strip.num_pixels; i++) {
-                cyclotron_strip.grbx[i] = 0; // clear the cyclotron LEDs
-            }
+            uint16_t prev_seq = cyclotron_seq_num;
             // add the integer portion to the cyclotron_seq_num
-//            cyclotron_seq_num += (pos_accum >> 12); // add the integer portion of the position to the sequence number
             cyclotron_seq_num += (pos_accum >> 14); // add the integer portion of the position to the sequence number
             if (cyclotron_seq_num >= cyclotron_strip.num_pixels) { // if the sequence number is greater than or equal to the number of pixels, wrap around
                 cyclotron_seq_num -= cyclotron_strip.num_pixels; // wrap around
             }
             // clear out the integer portion that was added to the position
             pos_accum &= 0x0FFF; // keep only the fractional portion of the position
+            // clear the previous position
+            cyclotron_strip.grbx[prev_seq % cyclotron_strip.num_pixels] = 0;
             // turn on the new position
             cyclotron_strip.grbx[cyclotron_seq_num % cyclotron_strip.num_pixels] = cyclotron_after_set[cy_color_set*3][2]; // turn on a set of LEDs
         }
@@ -202,7 +199,6 @@ bool cy_rotate_fade_out(bool seq_init, uint16_t fade_amount) {
     static uint16_t delta_accum = 0; // holds the delta value that should grow as the speed increases
     static uint16_t fade_value = 0; // scaled up by a factor of 256, so 0-65535
     if (seq_init) {
-        clear_strip(&cyclotron_strip); // clear the cyclotron vars
         // cyclotron_seq_num = 0;  No change to whatever the current position is
         // init local variables
         pos_accum = 0; // start at 0
@@ -224,10 +220,7 @@ bool cy_rotate_fade_out(bool seq_init, uint16_t fade_amount) {
         } 
         // check to see if the pixels need to be shifted.
         if (pos_accum >= 1<<12) { // the position accumulator has an integer portion, we need to shift the LEDs
-            // blank out the previous position
-            for (int i=0; i<cyclotron_strip.num_pixels; i++) {
-                cyclotron_strip.grbx[i] = 0; // clear the cyclotron LEDs
-            }
+            uint16_t prev_seq = cyclotron_seq_num;
             // add the integer portion to the cyclotron_seq_num
             cyclotron_seq_num += (pos_accum >> 12); // add the integer portion of the position to the sequence number
             if (cyclotron_seq_num >= cyclotron_strip.num_pixels) { // if the sequence number is greater than or equal to the number of pixels, wrap around
@@ -235,14 +228,20 @@ bool cy_rotate_fade_out(bool seq_init, uint16_t fade_amount) {
             }
             // clear out the integer portion that was added to the position
             pos_accum &= 0x0FFF; // keep only the fractional portion of the position
+            // clear the previous position
+            for (int i=0; i<cyclotron_after_set_size; i++) {
+                cyclotron_strip.grbx[(prev_seq + i) % cyclotron_strip.num_pixels] = 0; // clear the previous LEDs
+            }
             // turn on the new position
             for(int i=0; i<cyclotron_after_set_size; i++) {
                 cyclotron_strip.grbx[((cyclotron_seq_num)+ i) % cyclotron_strip.num_pixels] = fade_correction(cyclotron_after_set[(cy_color_set*3)][i], fade_value >> 8); // turn on a set of LEDs
             }
         }
     }
-    if (fade_value >= (255 << 8) ) { 
-        clear_strip(&cyclotron_strip); // we are going to be done, so make sure no lights are on
+    if (fade_value >= (255 << 8) ) {
+        for (int i = 0; i < cyclotron_after_set_size; i++) {
+            cyclotron_strip.grbx[(cyclotron_seq_num + i) % cyclotron_strip.num_pixels] = 0;
+        }
     }
     return (fade_value >= (255 << 8) ); // return true if the sequence is complete, i.e. the passed fade value is 255
 }
@@ -254,7 +253,6 @@ bool cy_rotate_fade_out_afterx4(bool seq_init, uint16_t fade_amount) {
     static uint16_t delta_accum = 0; // holds the delta value that should grow as the speed increases
     static uint16_t fade_value = 0; // scaled up by a factor of 256, so 0-65535
     if (seq_init) {
-        clear_strip(&cyclotron_strip); // clear the cyclotron vars
         // cyclotron_seq_num = 0;  No change to whatever the current position is
         // init local variables
         pos_accum = 0; // start at 0
@@ -276,24 +274,22 @@ bool cy_rotate_fade_out_afterx4(bool seq_init, uint16_t fade_amount) {
         // check to see if the pixels need to be shifted.
 //        if (pos_accum >= 1<<12) { // the position accumulator has an integer portion, we need to shift the LEDs
         if (pos_accum >= 1<<14) { // the position accumulator has an integer portion, we need to shift the LEDs
-            // blank out the previous position
-            for (int i=0; i<cyclotron_strip.num_pixels; i++) {
-                cyclotron_strip.grbx[i] = 0; // clear the cyclotron LEDs
-            }
+            uint16_t prev_seq = cyclotron_seq_num;
             // add the integer portion to the cyclotron_seq_num
-//            cyclotron_seq_num += (pos_accum >> 12); // add the integer portion of the position to the sequence number
             cyclotron_seq_num += (pos_accum >> 14); // add the integer portion of the position to the sequence number
             if (cyclotron_seq_num >= cyclotron_strip.num_pixels) { // if the sequence number is greater than or equal to the number of pixels, wrap around
                 cyclotron_seq_num -= cyclotron_strip.num_pixels; // wrap around
             }
             // clear out the integer portion that was added to the position
             pos_accum &= 0x0FFF; // keep only the fractional portion of the position
+            // clear the previous position
+            cyclotron_strip.grbx[prev_seq % cyclotron_strip.num_pixels] = 0;
             // turn on the new position
             cyclotron_strip.grbx[cyclotron_seq_num % cyclotron_strip.num_pixels] = fade_correction(cyclotron_after_set[cy_color_set*3][2], fade_value >> 8); // turn on a set of LEDs
         }
     }
-    if (fade_value >= (255 << 8) ) { 
-        clear_strip(&cyclotron_strip); // we are going to be done, so make sure no lights are on
+    if (fade_value >= (255 << 8) ) {
+        cyclotron_strip.grbx[cyclotron_seq_num % cyclotron_strip.num_pixels] = 0;
     }
     return (fade_value >= (255 << 8) ); // return true if the sequence is complete, i.e. the passed fade value is 255
 }
@@ -303,7 +299,6 @@ const uint16_t cy_classic_rotate_cycles = 4; // one step per LED in the ring
 void cy_classic_rotate(bool seq_init, bool clockwise) {
     // This pattern rotates the cyclotron LEDs by shifting them around in one direction or the other
     if (seq_init) {
-        clear_strip(&cyclotron_strip); // clear the cyclotron vars
         cyclotron_seq_num = 0; // reset the sequence number
         //set the current position to the first classic position
         for (int i=0; i<cyclotron_color_set_size; i++) {
@@ -337,16 +332,21 @@ void cy_classic_rotate_fade(bool seq_init, bool clockwise, uint16_t fade_amount,
     static uint16_t fade_value = 0; // scaled up by a factor of 256, so 0-65535
     static uint8_t prev_position = 0; // scaled up by a factor of 256, so 0-65535
     if (seq_init) {
-        clear_strip(&cyclotron_strip); // clear the cyclotron vars
         cyclotron_seq_num = 0; // reset the sequence number
         // init local variables
         sub_seq1 = 0; // reset the subsequence number
         sub_seq2 = 0; // reset the subsequence number
         fade_value = 0; // set to the no fade for starters
         prev_position = 0; // reset the previous position number
-        //set the current position to the first classic position
-        for (int i=0; i<cyclotron_color_set_size; i++) {
-            cyclotron_strip.grbx[(cyclotron_positions.classic[cyc_classic_index][cyclotron_seq_num]+i+cyclotron_strip.num_pixels-(cyclotron_color_set_size>>1)) % cyclotron_strip.num_pixels] = cyclotron_color_set[cy_color_set][i]; // turn on the classic cyclotron LEDs
+        // light the first position before clearing others
+        for (int i = 0; i < cyclotron_color_set_size; i++) {
+            cyclotron_strip.grbx[(cyclotron_positions.classic[cyc_classic_index][cyclotron_seq_num]+i+cyclotron_strip.num_pixels-(cyclotron_color_set_size>>1)) % cyclotron_strip.num_pixels] = cyclotron_color_set[cy_color_set][i];
+        }
+        // clear the remaining classic positions
+        for (int j = 1; j < 4; j++) {
+            for (int i = 0; i < cyclotron_color_set_size; i++) {
+                cyclotron_strip.grbx[(cyclotron_positions.classic[cyc_classic_index][j]+i+cyclotron_strip.num_pixels-(cyclotron_color_set_size>>1)) % cyclotron_strip.num_pixels] = 0;
+            }
         }
     } else {
         sub_seq1++; // increment the subsequence number
@@ -382,7 +382,6 @@ void cy_classic_slime(bool seq_init, bool clockwise, uint16_t fade_amount, uint1
     static uint16_t fade_value = 0; // scaled up by a factor of 256, so 0-65535
     static uint8_t prev_position = 0; // scaled up by a factor of 256, so 0-65535
     if (seq_init) {
-        clear_strip(&cyclotron_strip); // clear the cyclotron vars
         cyclotron_seq_num = 0; // reset the sequence number
         // init local variables
         sub_seq1 = 0; // reset the subsequence number
@@ -428,7 +427,6 @@ bool cy_classic_strobe(bool seq_init, uint16_t fade_amount, uint16_t steps_actua
     static uint16_t sub_seq2 = 0; // local subsequence number for a more complex pattern
     static uint16_t fade_value = 0; // scaled up by a factor of 256, so 0-65535
     if (seq_init) {
-        clear_strip(&cyclotron_strip); // clear the cyclotron vars
         // init local variables
         sub_seq1 = 0; // reset the subsequence number
         sub_seq2 = 0; // reset the subsequence number
@@ -438,7 +436,7 @@ bool cy_classic_strobe(bool seq_init, uint16_t fade_amount, uint16_t steps_actua
             for (int i=0; i<cyclotron_color_set_size; i++) {
                 cyclotron_strip.grbx[(cyclotron_positions.classic[cyc_classic_index][j*2]+i+cyclotron_strip.num_pixels-(cyclotron_color_set_size>>1)) % cyclotron_strip.num_pixels] = cyclotron_color_set[cy_color_set][i]; // turn on the classic cyclotron LEDs
             }
-        }   
+        }
     } else {
         if (sub_seq1 >= steps_actual) {
             sub_seq1 = 0; // reset the subsequence number
@@ -466,15 +464,8 @@ bool cy_classic_all_fade(bool seq_init, uint16_t fade_amount, bool fade_out) {
     // This pattern rotates the cyclotron LEDs by shifting them around in one direction or the other
     static uint16_t fade_value = 0; // scaled up by a factor of 256, so 0-65535
     if (seq_init) {
-        clear_strip(&cyclotron_strip); // clear the cyclotron vars
         // init local variables
         fade_value = 0; // set to the no fade for fade_out, or max fade for fade_in
-        // initialize all four cyclotron positions
-        for(int j=0; j<4; j++) {
-            for (int i=0; i<cyclotron_color_set_size; i++) {
-                cyclotron_strip.grbx[(cyclotron_positions.classic[cyc_classic_index][j]+i+cyclotron_strip.num_pixels-(cyclotron_color_set_size>>1)) % cyclotron_strip.num_pixels] = fade_out ? cyclotron_color_set[cy_color_set][i] : 0; // turn all on or off
-            }
-        }   
     } else {
         // calculate the next fade value
         fade_value = ((fade_value + fade_amount) < 1<<16) ? fade_value + fade_amount : (1<<16)-1; // increment the fade value, but needs to max out at 2^16-1
@@ -487,7 +478,7 @@ bool cy_classic_all_fade(bool seq_init, uint16_t fade_amount, bool fade_out) {
                 } else {
                     // fade in the cyclotron color set
                     cyclotron_strip.grbx[(cyclotron_positions.classic[cyc_classic_index][j]+i+cyclotron_strip.num_pixels-(cyclotron_color_set_size>>1)) % cyclotron_strip.num_pixels] = fade_correction(cyclotron_color_set[cy_color_set][i], 255-(fade_value >> 8));
-                }   
+                }
             }
         }
     }

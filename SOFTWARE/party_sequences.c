@@ -224,7 +224,7 @@ void party_mode_set_animation(party_animation_t animation) {
     pc_pattern_stop(true);
     cy_pattern_stop(true);
     fr_pattern_stop(true);
-    blank_all_strings();
+    clear_led_vars();
 
     current_animation = animation;
     party_mode_active = true;
@@ -240,7 +240,7 @@ void party_mode_stop(void) {
     pc_pattern_stop(true);
     cy_pattern_stop(true);
     fr_pattern_stop(true);
-    blank_all_strings();
+    clear_led_vars();
 }
 
 bool party_mode_is_active(void) {

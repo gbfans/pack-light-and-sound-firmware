@@ -58,6 +58,9 @@ void song_monitor(void) {
     static SongMonitorState state = SONG_MONITOR_IDLE;
     static absolute_time_t debounce_timer;
     static uint8_t party_animation_index = 0; // 0 is off
+    static bool last_fire_state = false;
+    bool fire_now = fire_sw();
+    bool tap_now = fire_tap();
 
     // If a song finishes on its own, reset state
     if (state == SONG_MONITOR_PLAYING && !sound_is_playing()) {
@@ -70,7 +73,7 @@ void song_monitor(void) {
 
     switch (state) {
         case SONG_MONITOR_IDLE:
-            if (song_toggle()) {
+            if (song_toggle() && song_sw()) {
                 clear_song_toggle();
                 debounce_timer = get_absolute_time();
                 state = SONG_MONITOR_DEBOUNCE;
@@ -81,7 +84,9 @@ void song_monitor(void) {
             if (absolute_time_diff_us(debounce_timer, get_absolute_time()) > 500 * 1000) {
                 song = (song >= pack_song_count) ? 0x80 : 0x80 | (song + 1);
                 sound_start_safely(96 + (song & 0x7f));
+                party_mode_stop();
                 party_animation_index = 0; // Reset party mode
+                clear_song_toggle(); // ignore release edge
                 state = SONG_MONITOR_PLAYING;
             }
             break;
@@ -90,13 +95,15 @@ void song_monitor(void) {
             if (song_toggle()) {
                 clear_song_toggle();
                 state = SONG_MONITOR_STOPPING;
-            } else if (fire_tap() && pack_state_get_state() == PS_OFF) {
-                clear_fire_tap();
+            } else if (pack_state_get_state() == PS_OFF && ((fire_now && !last_fire_state) || tap_now)) {
                 party_animation_index = (party_animation_index + 1) % (PARTY_ANIMATION_COUNT + 1); // 0=Off, 1=Rainbow, 2=Cylon, 3=Sparkle, 4=Beat
                 if (party_animation_index == 0) {
                     party_mode_stop();
                 } else {
                     party_mode_set_animation((party_animation_t)(party_animation_index - 1));
+                }
+                if (tap_now) {
+                    clear_fire_tap();
                 }
             }
             break;
@@ -108,9 +115,15 @@ void song_monitor(void) {
             }
             party_animation_index = 0;
             song &= 0x7F; // Clear playing flag
+            clear_song_toggle();
             state = SONG_MONITOR_IDLE;
             break;
     }
+
+    if (tap_now) {
+        clear_fire_tap();
+    }
+    last_fire_state = fire_now;
 }
 
 /**
@@ -461,7 +474,7 @@ void ring_monitor(void) {
     }
     if (rainbow_active &&
         absolute_time_diff_us(rainbow_start, get_absolute_time()) > 5 * 1000 * 1000) {
-        cy_pattern_stop(true);
+        cy_pattern_stop(false);
         rainbow_active = false;
     }
     cyclotron_strip.num_pixels = current_num_pixels;
