@@ -7,9 +7,12 @@ name: Build
 "on":
   push:
     branches: ["main"]
+    paths:
+      - 'SOFTWARE/**'
   pull_request:
     branches: ["main"]
-
+    paths:
+      - 'SOFTWARE/**'
 env:
   BUILD_TYPE: Release
   PICO_BOARD: pico
