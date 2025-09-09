@@ -1,1 +1,1 @@
-![](HARDWARE/pack-light-sound-kit-main-board.png)
+![](pack-light-sound-kit-main-board.png)
