@@ -1,0 +1,59 @@
+[
+  {"name":"movie_powercell_sequence","led":15,"color":"blue","layout":"strip"},
+  {"name":"movie_future_sequence","led":18,"color":"white","layout":"ring"},
+  {"name":"movie_cyclotron_sequence","led":4,"color":"red","layout":"ring"},
+  {"name":"movie_cyclotron_sequence","led":24,"color":"red","layout":"ring"},
+  {"name":"movie_cyclotron_sequence","led":32,"color":"red","layout":"ring"},
+  {"name":"movie_cyclotron_sequence","led":40,"color":"red","layout":"ring"},
+
+  {"name":"video_game_powercell_sequence","led":15,"color":"blue","layout":"strip"},
+  {"name":"video_game_future_sequence","led":18,"color":"white","layout":"ring"},
+  {"name":"video_game_cyclotron_sequence","led":4,"color":"red","layout":"ring"},
+  {"name":"video_game_cyclotron_sequence","led":24,"color":"red","layout":"ring"},
+  {"name":"video_game_cyclotron_sequence","led":32,"color":"red","layout":"ring"},
+  {"name":"video_game_cyclotron_sequence","led":40,"color":"red","layout":"ring"},
+
+  {"name":"tvg_powercell_sequence","led":15,"color":"blue","layout":"strip"},
+  {"name":"tvg_future_sequence","led":18,"color":"white","layout":"ring"},
+  {"name":"tvg_cyclotron_sequence","led":4,"color":"red","layout":"ring"},
+  {"name":"tvg_cyclotron_sequence","led":24,"color":"red","layout":"ring"},
+  {"name":"tvg_cyclotron_sequence","led":32,"color":"red","layout":"ring"},
+  {"name":"tvg_cyclotron_sequence","led":40,"color":"red","layout":"ring"},
+
+  {"name":"afterlife_powercell_sequence","led":15,"color":"blue","layout":"strip"},
+  {"name":"afterlife_future_sequence","led":18,"color":"white","layout":"ring"},
+  {"name":"afterlife_cyclotron_sequence","led":4,"color":"red","layout":"ring"},
+  {"name":"afterlife_cyclotron_sequence","led":24,"color":"red","layout":"ring"},
+  {"name":"afterlife_cyclotron_sequence","led":32,"color":"red","layout":"ring"},
+  {"name":"afterlife_cyclotron_sequence","led":40,"color":"red","layout":"ring"},
+
+  {"name":"party_rainbow_fade","led":15,"color":"rainbow","layout":"strip"},
+  {"name":"party_cylon_scanner","led":15,"color":"rainbow","layout":"strip"},
+  {"name":"party_random_sparkle","led":15,"color":"rainbow","layout":"strip"},
+  {"name":"party_beat_meter","led":15,"color":"rainbow","layout":"strip"},
+
+  {"name":"party_rainbow_fade","led":18,"color":"rainbow","layout":"ring"},
+  {"name":"party_cylon_scanner","led":18,"color":"rainbow","layout":"ring"},
+  {"name":"party_random_sparkle","led":18,"color":"rainbow","layout":"ring"},
+  {"name":"party_beat_meter","led":18,"color":"rainbow","layout":"ring"},
+
+  {"name":"party_rainbow_fade","led":4,"color":"rainbow","layout":"ring"},
+  {"name":"party_cylon_scanner","led":4,"color":"rainbow","layout":"ring"},
+  {"name":"party_random_sparkle","led":4,"color":"rainbow","layout":"ring"},
+  {"name":"party_beat_meter","led":4,"color":"rainbow","layout":"ring"},
+
+  {"name":"party_rainbow_fade","led":24,"color":"rainbow","layout":"ring"},
+  {"name":"party_cylon_scanner","led":24,"color":"rainbow","layout":"ring"},
+  {"name":"party_random_sparkle","led":24,"color":"rainbow","layout":"ring"},
+  {"name":"party_beat_meter","led":24,"color":"rainbow","layout":"ring"},
+
+  {"name":"party_rainbow_fade","led":32,"color":"rainbow","layout":"ring"},
+  {"name":"party_cylon_scanner","led":32,"color":"rainbow","layout":"ring"},
+  {"name":"party_random_sparkle","led":32,"color":"rainbow","layout":"ring"},
+  {"name":"party_beat_meter","led":32,"color":"rainbow","layout":"ring"},
+
+  {"name":"party_rainbow_fade","led":40,"color":"rainbow","layout":"ring"},
+  {"name":"party_cylon_scanner","led":40,"color":"rainbow","layout":"ring"},
+  {"name":"party_random_sparkle","led":40,"color":"rainbow","layout":"ring"},
+  {"name":"party_beat_meter","led":40,"color":"rainbow","layout":"ring"}
+]

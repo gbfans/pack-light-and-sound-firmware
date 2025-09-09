@@ -1,0 +1,81 @@
+---
+name: Render animations
+
+permissions:
+  contents: write
+
+'on':
+  push:
+    branches: [main]
+    paths:
+      - 'SOFTWARE/sim/**'
+      - 'SOFTWARE/animations.cpp'
+      - 'SOFTWARE/animations.h'
+      - '.github/workflows/render-animations.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'SOFTWARE/sim/**'
+      - 'SOFTWARE/animations.cpp'
+      - 'SOFTWARE/animations.h'
+      - '.github/workflows/render-animations.yml'
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    env:
+      BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.BRANCH_NAME }}
+          fetch-depth: 0
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++ ffmpeg jq
+
+      - name: Configure simulator
+        run: |
+          cmake -S SOFTWARE/sim -B build-sim -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build simulator
+        run: cmake --build build-sim --target sim_led
+
+      - name: Render animations
+        run: |
+          mkdir -p SOFTWARE/animations frames
+          jq -c '.[]' SOFTWARE/sim/animation_configs.json | while read cfg; do
+            name=$(echo "$cfg" | jq -r '.name')
+            leds=$(echo "$cfg" | jq -r '.led')
+            color=$(echo "$cfg" | jq -r '.color')
+            layout=$(echo "$cfg" | jq -r '.layout')
+            rm -f frames/frame_*.ppm
+            ANIMATION_NAME="$name" LED_COUNT="$leds" \
+              COLOR="$color" LAYOUT="$layout" ./build-sim/sim_led </dev/null
+            ffmpeg -y -framerate 60 -i frames/frame_%05d.ppm \
+              -c:v libx264 -pix_fmt yuv420p \
+              SOFTWARE/animations/${name}_${leds}_${color}.mp4 </dev/null
+            ffmpeg -y -i SOFTWARE/animations/${name}_${leds}_${color}.mp4 \
+              -vf "fps=15,scale=320:-1:flags=lanczos" \
+              SOFTWARE/animations/${name}_${leds}_${color}.gif </dev/null
+            rm -f frames/frame_*.ppm
+          done
+
+      - name: Upload animations
+        uses: actions/upload-artifact@v4
+        with:
+          name: animations
+          path: SOFTWARE/animations/
+
+      - name: Commit animations
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase --autostash origin "$BRANCH_NAME"
+          git add SOFTWARE/animations/*.mp4 SOFTWARE/animations/*.gif
+          git commit -m "chore: update animations" || \
+            echo "No changes to commit"
+          git push origin HEAD:"$BRANCH_NAME"
