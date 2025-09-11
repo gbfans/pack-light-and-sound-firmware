@@ -23,11 +23,31 @@ lighting, user inputs and audio outputs from a single board.
 ## Configuration Controls
 ### DIP switches
 A 5‑position DIP switch block configures pack behaviour:
-1. **PackSel0** – first bit of the pack selection.
-2. **PackSel1** – second bit of the pack selection.
-3. **Heat** – enables heating effects.
-4. **Interactive** – enables the monster Easter‑egg.
-5. **Hum** – plays a continuous idle hum track.
+
+| Switch | Function |
+|--------|----------|
+| 1 – **PackSel0** | Together with switch 2 selects the pack variant.<br>00 = 4× red snap, 01 = 4× red fade, 10 = TVG, 11 = Afterlife (or Afterlife TVG when switch 3 is on). |
+| 2 – **PackSel1** | Second bit of the pack selection. |
+| 3 – **Heat** | Enables heating effects and allows Afterlife TVG when used with switches 1 and 2 both on. |
+| 4 – **Interactive** | Turns interactive mode on or off (enables the monster sound Easter‑egg when on). |
+| 5 – **Hum** | Turns the idle hum on or off. |
+
+#### Pack configuration selections
+
+| PackSel1 | PackSel0 | Pack configuration |
+| -------- | -------- | ----------------- |
+| 0 | 0 | Movie pack sounds (snap) |
+| 0 | 1 | Movie pack sounds (fade) |
+| 1 | 0 | TVG pack sounds; tap Fire to cycle eight weapons |
+| 1 | 1 | Afterlife pack. With **Heat** on, enters Afterlife TVG mode |
+
+#### Hum selection
+
+Switch 5 **ON** enables the idle hum. Switch 5 **OFF** mutes the hum when the pack is idling.
+
+#### Party mode
+
+Activate party mode by starting a song with the song switch, then tapping the fire button while the pack is off. Each tap cycles through several fun animations that use all `N` cyclotron LEDs.
 
 ### Potentiometers
 Two adjustment potentiometers feed ADC channels on the Pico:
@@ -103,32 +123,6 @@ Only four user switches are needed to control the sounds:
 Each switch header provides both pull‑up (**PU**) and pull‑down (**PD**)
 connections so normally‑open or normally‑closed switches can be used without
 additional hardware.
-
-## Configuration DIP Switch Settings
-A five‑position configuration DIP switch resides at the top of the board. The
-switches select pack behavior and optional features:
-
-| Switch | Function |
-| ------ | -------- |
-| 1 | PackSel0 – pack selection bit 0 |
-| 2 | PackSel1 – pack selection bit 1 |
-| 3 | Heat – enables heating effects and Afterlife TVG when switches 1 and 2 are both on |
-| 4 | Interactive – enables monster/interactive Easter‑egg sounds |
-| 5 | Hum – plays a continuous idle hum track |
-
-### Pack configuration selections
-
-| PackSel1 | PackSel0 | Pack configuration |
-| -------- | -------- | ----------------- |
-| 0 | 0 | Movie pack sounds (snap) |
-| 0 | 1 | Movie pack sounds (fade) |
-| 1 | 0 | TVG pack sounds; tap Fire to cycle eight weapons |
-| 1 | 1 | Afterlife pack. With **Heat** on, enters Afterlife TVG mode |
-
-### Hum selection
-
-Switch 5 **ON** enables the idle hum. Switch 5 **OFF** mutes the hum when the
-pack is idling.
 
 ## Installation
 
