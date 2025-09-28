@@ -189,3 +189,20 @@ wires carry little current so almost any gauge (28–20) is fine.
 ### Distortion board
 An external distortion‑fix module is not needed; the sound module and amplifier
 are designed to work together from a single battery.
+
+
+# Cyclotron & Vent Board
+
+![Main board](images/cyclotron%20and%20vent%20board.png)
+
+The Cyclotron and Vent LED board is designed for use with the Pack: Light and Sound Controller or any controller capable of driving WS2812B LEDs. It provides four individual LEDs for the Cyclotron and one LED for the Vent. The board supports standard animations, an Afterlife-style mode, and full RGB output for video game effects.
+
+The board is equipped with a JST SM adapter for straightforward connection to the controller.
+
+Installation Instructions
+
+You will receive five sets of wires with the board. Use the short wires with white connectors on both ends to connect the boards in sequence: A to B, B to C, and C to D. The connection points are labeled on the PCB as AB, BC, and CD.
+
+Use the longer cable to connect the IN port on the A board to the IN port on the Vent board.
+
+When using this board with four LEDs, you must also adjust the potentiometer on the main controller board labeled ADJ1. Rotate this potentiometer counterclockwise until a four-LED rainbow pattern appears and rotates. This confirms the correct setting.
