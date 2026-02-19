@@ -145,8 +145,12 @@ void check_user_switches_isr(void) {
     static uint8_t debounce_fire_cnt = 0;
     static bool user_inputs_initialized = false;
     const uint8_t debounce_user_done = 15;
-    const uint8_t debounce_fire_found = 12;
-    const uint8_t debounce_fire_max = 30;
+    // Fire tap timing is evaluated in ISR ticks (pack_isr_interval_ms = 4 ms).
+    // Keep a small minimum to reject noise, but gate fire immediately so short
+    // presses in TVG mode do not transition into firing before release.
+    const uint8_t debounce_fire_hold_block = 1; // 4 ms to suppress early fire
+    const uint8_t debounce_fire_min = 3;        // 12 ms minimum valid tap
+    const uint8_t debounce_fire_max = 100;      // 400 ms tap upper bound
 
     uint8_t config_user_maybe = gpio_get(11);
     for (int gpio = 13; gpio <= 16; gpio++) {
@@ -211,7 +215,7 @@ void check_user_switches_isr(void) {
             (fire_stable_pressed != fire_sample_pressed)) {
             fire_stable_pressed = fire_sample_pressed;
             if (!fire_stable_pressed) {
-                if ((debounce_fire_cnt >= debounce_fire_found) &&
+                if ((debounce_fire_cnt >= debounce_fire_min) &&
                     (debounce_fire_cnt <= debounce_fire_max)) {
                     user_switch_flags |= USER_SWITCH_FLAG_FIRE_TAP_MASK;
                 }
@@ -226,7 +230,7 @@ void check_user_switches_isr(void) {
             if (debounce_fire_cnt < 250) {
                 debounce_fire_cnt++;
             }
-            if (debounce_fire_cnt == debounce_fire_found) {
+            if (debounce_fire_cnt == debounce_fire_hold_block) {
                 user_switch_flags |= USER_SWITCH_FLAG_FIRE_HELD_MASK;
             } else if (debounce_fire_cnt == debounce_fire_max) {
                 user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_MASK;
