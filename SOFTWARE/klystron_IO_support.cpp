@@ -141,39 +141,14 @@ void check_dip_switches_isr(void) {
  */
 void check_user_switches_isr(void) {
     static uint8_t config_user_last = 0;
-    static uint8_t config_user_maybe = 0;
     static uint8_t debounce_user_cnt = 0;
-    const uint8_t debounce_user_done = 15;
     static uint8_t debounce_fire_cnt = 0;
+    static bool user_inputs_initialized = false;
+    const uint8_t debounce_user_done = 15;
     const uint8_t debounce_fire_found = 12;
     const uint8_t debounce_fire_max = 30;
 
-    if (((config_dip_sw & DIP_PACKSEL_MASK) == DIP_PACKSEL1_MASK) ||
-        (((config_dip_sw & DIP_PACKSEL_MASK) == DIP_PACKSEL_MASK) &&
-         (config_dip_sw & DIP_HEAT_MASK))) {
-        if (gpio_get(15) == 0) {
-            if (debounce_fire_cnt < 250)
-                debounce_fire_cnt++;
-            if (debounce_fire_cnt == debounce_fire_found) {
-                user_switch_flags |= 0x01;
-            } else if (debounce_fire_cnt == debounce_fire_max) {
-                user_switch_flags &= ~0x03;
-            }
-        } else {
-            if ((debounce_fire_cnt >= debounce_fire_found) &&
-                (debounce_fire_cnt <= debounce_fire_max)) {
-                user_switch_flags |= 0x02;
-                // Clear the FIRE press (bit 3) since it probably registers
-                user_switches &= 0xF7;
-            }
-            debounce_fire_cnt = 0;
-        }
-    } else {
-        debounce_fire_cnt = 0;
-        user_switch_flags &= ~0x03;
-    }
-
-    config_user_maybe = gpio_get(11);
+    uint8_t config_user_maybe = gpio_get(11);
     for (int gpio = 13; gpio <= 16; gpio++) {
         config_user_maybe |= (gpio_get(gpio) << (gpio - 13 + 1));
     }
@@ -188,22 +163,76 @@ void check_user_switches_isr(void) {
         }
         debounce_user_cnt++;
         if (debounce_user_cnt >= debounce_user_done) {
-            if ((config_user_maybe & 0x04) != (user_switches & 0x04)) {
-                user_switch_flags |= 0x04;
+            if (user_inputs_initialized) {
+                // Song switch is edge-triggered: only register on stable
+                // rising edges to avoid release chatter creating stale events.
+                if ((config_user_maybe & 0x04) && !(user_switches & 0x04)) {
+                    user_switch_flags |= 0x04;
+                }
+
+                // Pack power-up request is also rising-edge-triggered.
+                if ((config_user_maybe & 0x01) && !(user_switches & 0x01)) {
+                    user_switch_flags |= 0x08;
+                } else if (!(config_user_maybe & 0x01) &&
+                           (user_switches & 0x01)) {
+                    user_switch_flags &= ~0x08;
+                }
+            } else {
+                user_inputs_initialized = true;
+                user_switch_flags &= ~0x0C;
             }
-            if (((config_user_maybe & 0x01) == 1) &&
-                ((user_switches & 0x01) == 0)) {
-                user_switch_flags |= 0x08;
-            }
-            if (((config_user_maybe & 0x01) == 0) &&
-                ((user_switches & 0x01) == 1)) {
-                user_switch_flags &= ~0x08;
-            }
+
             user_switches = config_user_maybe;
             debounce_user_cnt = 0;
         }
     } else {
         debounce_user_cnt = 0;
+    }
+
+    if (((config_dip_sw & DIP_PACKSEL_MASK) == DIP_PACKSEL1_MASK) ||
+        (((config_dip_sw & DIP_PACKSEL_MASK) == DIP_PACKSEL_MASK) &&
+         (config_dip_sw & DIP_HEAT_MASK))) {
+        static bool fire_stable_pressed = false;
+        static bool fire_last_sample = false;
+        static uint8_t fire_stable_cnt = 0;
+        const uint8_t fire_stable_done = 3;
+
+        bool fire_sample_pressed = (gpio_get(15) == 0);
+        if (fire_sample_pressed != fire_last_sample) {
+            fire_last_sample = fire_sample_pressed;
+            fire_stable_cnt = 0;
+        } else if (fire_stable_cnt < fire_stable_done) {
+            fire_stable_cnt++;
+        }
+
+        if ((fire_stable_cnt >= fire_stable_done) &&
+            (fire_stable_pressed != fire_sample_pressed)) {
+            fire_stable_pressed = fire_sample_pressed;
+            if (!fire_stable_pressed) {
+                if ((debounce_fire_cnt >= debounce_fire_found) &&
+                    (debounce_fire_cnt <= debounce_fire_max)) {
+                    user_switch_flags |= 0x02;
+                }
+                user_switch_flags &= ~0x01;
+                debounce_fire_cnt = 0;
+            } else {
+                user_switch_flags &= ~0x02;
+            }
+        }
+
+        if (fire_stable_pressed) {
+            if (debounce_fire_cnt < 250) {
+                debounce_fire_cnt++;
+            }
+            if (debounce_fire_cnt == debounce_fire_found) {
+                user_switch_flags |= 0x01;
+            } else if (debounce_fire_cnt == debounce_fire_max) {
+                user_switch_flags &= ~0x03;
+            }
+        }
+    } else {
+        debounce_fire_cnt = 0;
+        user_switch_flags &= ~0x03;
     }
 }
 
