@@ -35,6 +35,26 @@ static const uint8_t DIP_HEAT_MASK = 0x04;
 static const uint8_t DIP_MONSTER_MASK = 0x08;
 static const uint8_t DIP_HUM_MASK = 0x10;
 
+// === User switch state masks ===
+static const uint8_t USER_SWITCH_PACK_PU_MASK = 0x01;
+static const uint8_t USER_SWITCH_VENT_MASK = 0x02;
+static const uint8_t USER_SWITCH_SONG_MASK = 0x04;
+static const uint8_t USER_SWITCH_FIRE_MASK = 0x08;
+static const uint8_t USER_SWITCH_PU_MASK = 0x10;
+static const uint8_t USER_SWITCH_VALID_MASK =
+    (USER_SWITCH_PACK_PU_MASK | USER_SWITCH_VENT_MASK |
+     USER_SWITCH_SONG_MASK | USER_SWITCH_FIRE_MASK | USER_SWITCH_PU_MASK);
+
+// === User switch event/flag masks ===
+static const uint8_t USER_SWITCH_FLAG_FIRE_HELD_MASK = 0x01;
+static const uint8_t USER_SWITCH_FLAG_FIRE_TAP_MASK = 0x02;
+static const uint8_t USER_SWITCH_FLAG_SONG_TOGGLE_MASK = 0x04;
+static const uint8_t USER_SWITCH_FLAG_PACK_PU_REQ_MASK = 0x08;
+static const uint8_t USER_SWITCH_FLAG_FIRE_MASK =
+    (USER_SWITCH_FLAG_FIRE_HELD_MASK | USER_SWITCH_FLAG_FIRE_TAP_MASK);
+static const uint8_t USER_SWITCH_FLAG_EDGE_EVENTS_MASK =
+    (USER_SWITCH_FLAG_SONG_TOGGLE_MASK | USER_SWITCH_FLAG_PACK_PU_REQ_MASK);
+
 /** @brief Enumeration of the different pack types selectable by DIP switch. */
 typedef enum {
     PACK_TYPE_SNAP_RED = 0,
