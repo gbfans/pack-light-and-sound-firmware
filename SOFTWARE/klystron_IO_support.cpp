@@ -154,8 +154,8 @@ void check_user_switches_isr(void) {
     }
 
     // Invert and mask to the five valid user switch bits
-    config_user_maybe = (~config_user_maybe) & 0x1F;
-    if (config_user_maybe != (user_switches & 0x1F)) {
+    config_user_maybe = (~config_user_maybe) & USER_SWITCH_VALID_MASK;
+    if (config_user_maybe != (user_switches & USER_SWITCH_VALID_MASK)) {
 
         if (config_user_maybe != config_user_last) {
             debounce_user_cnt = 0;
@@ -166,20 +166,22 @@ void check_user_switches_isr(void) {
             if (user_inputs_initialized) {
                 // Song switch is edge-triggered: only register on stable
                 // rising edges to avoid release chatter creating stale events.
-                if ((config_user_maybe & 0x04) && !(user_switches & 0x04)) {
-                    user_switch_flags |= 0x04;
+                if ((config_user_maybe & USER_SWITCH_SONG_MASK) &&
+                    !(user_switches & USER_SWITCH_SONG_MASK)) {
+                    user_switch_flags |= USER_SWITCH_FLAG_SONG_TOGGLE_MASK;
                 }
 
                 // Pack power-up request is also rising-edge-triggered.
-                if ((config_user_maybe & 0x01) && !(user_switches & 0x01)) {
-                    user_switch_flags |= 0x08;
-                } else if (!(config_user_maybe & 0x01) &&
-                           (user_switches & 0x01)) {
-                    user_switch_flags &= ~0x08;
+                if ((config_user_maybe & USER_SWITCH_PACK_PU_MASK) &&
+                    !(user_switches & USER_SWITCH_PACK_PU_MASK)) {
+                    user_switch_flags |= USER_SWITCH_FLAG_PACK_PU_REQ_MASK;
+                } else if (!(config_user_maybe & USER_SWITCH_PACK_PU_MASK) &&
+                           (user_switches & USER_SWITCH_PACK_PU_MASK)) {
+                    user_switch_flags &= ~USER_SWITCH_FLAG_PACK_PU_REQ_MASK;
                 }
             } else {
                 user_inputs_initialized = true;
-                user_switch_flags &= ~0x0C;
+                user_switch_flags &= ~USER_SWITCH_FLAG_EDGE_EVENTS_MASK;
             }
 
             user_switches = config_user_maybe;
@@ -211,12 +213,12 @@ void check_user_switches_isr(void) {
             if (!fire_stable_pressed) {
                 if ((debounce_fire_cnt >= debounce_fire_found) &&
                     (debounce_fire_cnt <= debounce_fire_max)) {
-                    user_switch_flags |= 0x02;
+                    user_switch_flags |= USER_SWITCH_FLAG_FIRE_TAP_MASK;
                 }
-                user_switch_flags &= ~0x01;
+                user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_HELD_MASK;
                 debounce_fire_cnt = 0;
             } else {
-                user_switch_flags &= ~0x02;
+                user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_TAP_MASK;
             }
         }
 
@@ -225,34 +227,47 @@ void check_user_switches_isr(void) {
                 debounce_fire_cnt++;
             }
             if (debounce_fire_cnt == debounce_fire_found) {
-                user_switch_flags |= 0x01;
+                user_switch_flags |= USER_SWITCH_FLAG_FIRE_HELD_MASK;
             } else if (debounce_fire_cnt == debounce_fire_max) {
-                user_switch_flags &= ~0x03;
+                user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_MASK;
             }
         }
     } else {
         debounce_fire_cnt = 0;
-        user_switch_flags &= ~0x03;
+        user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_MASK;
     }
 }
 
 // --- Switch state accessors ---
-bool pack_pu_sw(void) { return (user_switches & 0x01); }
-bool pack_pu_req(void) { return (user_switch_flags & 0x08); }
-bool pu_sw(void) { return (user_switches & 0x10); }
-bool fire_sw(void) {
-    return ((user_switches & 0x08) && !(user_switch_flags & 0x01));
+bool pack_pu_sw(void) { return (user_switches & USER_SWITCH_PACK_PU_MASK); }
+bool pack_pu_req(void) {
+    return (user_switch_flags & USER_SWITCH_FLAG_PACK_PU_REQ_MASK);
 }
-bool fire_tap(void) { return (user_switch_flags & 0x02); }
-bool song_sw(void) { return (user_switches & 0x04); }
-bool song_toggle(void) { return (user_switch_flags & 0x04); }
-bool vent_sw(void) { return (user_switches & 0x02); }
+bool pu_sw(void) { return (user_switches & USER_SWITCH_PU_MASK); }
+bool fire_sw(void) {
+    return ((user_switches & USER_SWITCH_FIRE_MASK) &&
+            !(user_switch_flags & USER_SWITCH_FLAG_FIRE_HELD_MASK));
+}
+bool fire_tap(void) {
+    return (user_switch_flags & USER_SWITCH_FLAG_FIRE_TAP_MASK);
+}
+bool song_sw(void) { return (user_switches & USER_SWITCH_SONG_MASK); }
+bool song_toggle(void) {
+    return (user_switch_flags & USER_SWITCH_FLAG_SONG_TOGGLE_MASK);
+}
+bool vent_sw(void) { return (user_switches & USER_SWITCH_VENT_MASK); }
 bool wand_standby_sw(void) { return (!pu_sw() && vent_sw()); }
 
 // --- Flag clearing functions ---
-void clear_fire_tap(void) { user_switch_flags &= ~0x03; }
-void clear_song_toggle(void) { user_switch_flags &= ~0x04; }
-void clear_pack_pu_req(void) { user_switch_flags &= ~0x08; }
+void clear_fire_tap(void) {
+    user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_MASK;
+}
+void clear_song_toggle(void) {
+    user_switch_flags &= ~USER_SWITCH_FLAG_SONG_TOGGLE_MASK;
+}
+void clear_pack_pu_req(void) {
+    user_switch_flags &= ~USER_SWITCH_FLAG_PACK_PU_REQ_MASK;
+}
 
 // --- Direct GPIO control ---
 void nsignal_to_wandlights(bool autovent) {
