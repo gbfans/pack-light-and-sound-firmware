@@ -34,7 +34,7 @@ set(PICO_SDK_FETCH_FROM_GIT ON)
 set(PICO_SDK_FETCH_SDK_VERSION 2.1.1)
 include(pico_sdk_import.cmake)
 
-project(klystron VERSION 1.1.1 LANGUAGES C CXX)
+project(klystron VERSION 1.1.2 LANGUAGES C CXX)
 
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
