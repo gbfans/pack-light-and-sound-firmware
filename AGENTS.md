@@ -40,6 +40,11 @@ This matrix must be fully tested and passed before submitting changes. `N` refer
 | **Powercell** | Normal Operation | Powercell light scrolls from bottom to top endlessly. Does not stall. |
 | **Future Light** | Firing the wand | N-Filter light activates only during firing states. |
 | **TVG Lights** | Normal Operation | TVG patterns run as documented. Remainder LEDs are off. |
+| **TVG Fire Timing** | Wand lights attached, ear tap (100 ms pulse) | Weapon mode changes. Nothing fires, and the wand stays in step with the pack. |
+| | Wand lights attached, quick fire tap (180 ms pulse) | Short burst of firing. Mode does **not** change. |
+| | Standalone, quick tap of the fire switch | Weapon mode changes (allow one tap after power-up for the firmware to settle on the standalone window). |
+| | Standalone, press held past ~300 ms | Fires; mode does not change. |
+| | Any non-TVG pack type | Firing starts on the debounced press; taps never change mode. |
 
 
 ## 3. Control References

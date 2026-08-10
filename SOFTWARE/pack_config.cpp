@@ -120,4 +120,4 @@ const uint32_t pack_sound_baud_rate = 9600;
 const uint8_t pack_sound_max_volume = 30;
 
 /** @brief Repeating timer interval in milliseconds. */
-const uint32_t pack_isr_interval_ms = 4;
+const uint32_t pack_isr_interval_ms = PACK_ISR_INTERVAL_MS;

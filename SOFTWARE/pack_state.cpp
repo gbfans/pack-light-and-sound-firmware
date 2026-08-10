@@ -62,10 +62,8 @@ void cy_speed_ramp_update(void) {
 }
 
 void pack_state_init(void) {
-    pack_ctx.mode = ((config_pack_type() == PACK_TYPE_TVG_FADE) ||
-                     (config_pack_type() == PACK_TYPE_AFTER_TVG))
-                        ? pack_ctx.startup_mode
-                        : PACK_MODE_PROTON_STREAM;
+    pack_ctx.mode = config_pack_is_tvg() ? pack_ctx.startup_mode
+                                         : PACK_MODE_PROTON_STREAM;
     pack_ctx.state = PS_OFF;
     update_pack_colors();
     clear_fire_tap();
@@ -232,8 +230,7 @@ void pack_state_process(void) {
             }
         } else if (!song_is_playing() && fire_sw()) {
             PackMode mode = pack_state_get_mode();
-            PackState next = (((config_pack_type() == PACK_TYPE_TVG_FADE) ||
-                               (config_pack_type() == PACK_TYPE_AFTER_TVG)) &&
+            PackState next = (config_pack_is_tvg() &&
                               (mode == PACK_MODE_SLIME_BLOWER ||
                                mode == PACK_MODE_SLIME_TETHER))
                                  ? PS_SLIME_FIRE

@@ -436,8 +436,7 @@ void mode_monitor(void) {
   if (!fire_tap()) {
     return;
   }
-  if ((config_pack_type() == PACK_TYPE_TVG_FADE) ||
-      (config_pack_type() == PACK_TYPE_AFTER_TVG)) {
+  if (config_pack_is_tvg()) {
     PackMode prev = pack_state_get_mode();
     PackMode next = (PackMode)((int)prev + 1);
     switch (prev) {

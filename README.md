@@ -166,6 +166,38 @@ appropriate value with ADJ1.
 ### TVG Lights
 When the pack is set to a TVG mode (via `PackSel0`/`PackSel1` DIP switches), the fire button can be tapped (when not firing) to cycle through different weapon modes. Each mode has a unique color for the cyclotron and powercell, as defined in the firmware. These modes include the Proton Stream, Slime Blower, Stasis Stream, and more. The TVG lights respect the `N` setting from the ADJ1 potentiometer, meaning only the selected number of LEDs will be active.
 
+#### Fire button timing in TVG modes
+In a TVG mode a press on the fire input is ambiguous until it either ends or
+outlasts the **tap window**:
+
+- The pulse **ends inside** the window → mode change; nothing fires.
+- The pulse is **still active at the end** of the window → firing starts right
+  then, and no mode change happens.
+
+The two outcomes are mutually exclusive, so a single press can never both fire
+and change mode. In every non-TVG pack type there are no weapon modes to cycle,
+so firing starts as soon as the fire contact is debounced (about 12 ms) and the
+window is not used at all.
+
+The window itself depends on what is driving the fire input, which the firmware
+works out on its own — there is no setting to change:
+
+| Fire input driven by | Tap window | Why |
+|----------------------|-----------|-----|
+| A wand lights board | 140 ms | The wand stretches its own fire button to at least 180 ms and emits a fixed 100 ms pulse for the ear button, so 140 ms cleanly separates the two. |
+| A plain switch (standalone) | 300 ms | Nobody can tap a bare button under 140 ms reliably. |
+
+A wand lights board never passes the raw button through, so it can only ever
+produce a pulse of roughly 100 ms or one of 180 ms and up. The firmware watches
+the width of completed fire pulses in TVG modes: one that lands near 100 ms can
+only have come from a wand's ear button, and one that lands between about
+128 ms and 164 ms is a width no wand can generate, so it must be a bare switch.
+Anything else is ambiguous and is ignored. A wand is assumed until proven
+otherwise, and once the link has settled it takes two disagreeing presses to
+change the verdict, so an unusually timed press cannot move the window out from
+under you. In standalone use expect the first tap after power-up to fire before
+the firmware settles on the longer window.
+
 ## Building with Visual Studio Code
 
 1. Install [Visual Studio Code](https://code.visualstudio.com/) and the

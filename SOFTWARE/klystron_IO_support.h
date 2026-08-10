@@ -22,9 +22,21 @@ extern "C" {
 #endif
 
 // === GPIO assignments ===
+static const uint GPI_FIRE = 15;
 static const uint GPO_NBUSY_TO_WAND = 12;
 static const uint GPO_VENT_LIGHT = 28;
 static const uint GPO_MUTE = 22;
+
+/**
+ * @brief Period of the repeating pack timer ISR, in milliseconds.
+ * @details `pack_isr_interval_ms` is defined from this macro. Switch input
+ *          timing is measured in ISR ticks, so the macro is needed wherever a
+ *          millisecond figure has to become a compile-time tick count.
+ */
+#define PACK_ISR_INTERVAL_MS 4u
+
+/** @brief Convert a millisecond duration into whole pack ISR ticks. */
+#define PACK_ISR_TICKS(ms) ((uint16_t)((ms) / PACK_ISR_INTERVAL_MS))
 
 // === DIP switch masks ===
 static const uint8_t DIP_PACKSEL0_MASK = 0x01;
@@ -44,6 +56,13 @@ static const uint8_t USER_SWITCH_PU_MASK = 0x10;
 static const uint8_t USER_SWITCH_VALID_MASK =
     (USER_SWITCH_PACK_PU_MASK | USER_SWITCH_VENT_MASK |
      USER_SWITCH_SONG_MASK | USER_SWITCH_FIRE_MASK | USER_SWITCH_PU_MASK);
+/**
+ * @brief Switches handled by the shared slow debounce.
+ * @details FIRE is deliberately excluded: it has its own fast debounce so
+ *          that firing can start as soon as the contact is stable.
+ */
+static const uint8_t USER_SWITCH_DEBOUNCED_MASK =
+    (USER_SWITCH_VALID_MASK & (uint8_t)~USER_SWITCH_FIRE_MASK);
 
 // === User switch event/flag masks ===
 static const uint8_t USER_SWITCH_FLAG_FIRE_HELD_MASK = 0x01;
@@ -63,6 +82,22 @@ typedef enum {
     PACK_TYPE_AFTERLIFE,
     PACK_TYPE_AFTER_TVG
 } PackType;
+
+/**
+ * @brief What is driving the FIRE input.
+ * @details A wand lights board shapes the fire line before it reaches this
+ *          board, so the tap window that separates a mode change from a fire
+ *          request depends on whether one is attached. See
+ *          `klystron_IO_support.cpp` for how the link is detected.
+ */
+typedef enum {
+    /** Not enough evidence yet; wand timing is assumed. */
+    FIRE_LINK_UNKNOWN = 0,
+    /** A wand lights board is shaping the fire line. */
+    FIRE_LINK_WAND,
+    /** The fire line comes straight from a switch (standalone use). */
+    FIRE_LINK_STANDALONE
+} FireLinkState;
 
 // === Global I/O state variables ===
 extern volatile uint16_t adj_pot[2];
@@ -102,7 +137,12 @@ void unmute_audio(void);
 
 // --- Configuration accessors ---
 PackType config_pack_type(void);
+bool config_pack_is_tvg(void);
 uint8_t config_cyclotron_dir(void);
+
+// --- Fire input timing ---
+FireLinkState fire_link_state(void);
+uint16_t fire_tap_window_ms(void);
 
 #ifdef __cplusplus
 }
