@@ -134,94 +134,27 @@ void check_dip_switches_isr(void) {
 
 // === FIRE input timing ===
 //
-// Everything below is counted in ISR ticks of PACK_ISR_INTERVAL_MS, so a
-// measured pulse width is only accurate to within one tick either way.
+// All of these are wall-clock microseconds read from the hardware timer, not
+// counts of ISR calls. The pack timer is armed with a positive delay, which
+// the SDK defines as the gap between one callback ending and the next
+// starting, and the callback also drives the LED output, so the interval
+// between two polls is the nominal 4 ms plus however long the last pass took.
+// Counting polls would make every threshold below drift with LED load;
+// timestamping the edges keeps 140 ms meaning 140 ms.
 
-/** @brief Stable samples required before a fire edge is accepted (12 ms). */
-static const uint16_t FIRE_DEBOUNCE_TICKS = PACK_ISR_TICKS(12);
-/** @brief Shortest pulse accepted as a deliberate tap (20 ms). */
-static const uint16_t FIRE_TAP_MIN_TICKS = PACK_ISR_TICKS(20);
-/** @brief Tap window when a wand lights board drives the fire line. */
-static const uint16_t FIRE_TAP_WINDOW_WAND_TICKS = PACK_ISR_TICKS(140);
-/** @brief Tap window when a plain switch drives the fire line. */
-static const uint16_t FIRE_TAP_WINDOW_STANDALONE_TICKS = PACK_ISR_TICKS(300);
-
-// --- Wand lights link detection ---
-//
-// There is no dedicated wand-present input, so the link is identified from
-// the shape of the pulses arriving on the fire line. A wand lights board
-// never passes the raw button through:
-//
-//   * a press of the wand's FIRE button is stretched to at least 180 ms
-//   * a press of the wand's EAR button emits a fixed 100 ms pulse
-//
-// So a wand can only ever produce a pulse of about 100 ms or one of 180 ms
-// and up; nothing in between, and nothing shorter. A switch wired straight to
-// the FIRE input has no such shaping and lands wherever the user's thumb puts
-// it - typically well above 140 ms, which is exactly why a 140 ms window is
-// unusable standalone.
-//
-// A completed pulse is therefore classed as:
-//
-//   76..124 ms  only the wand's ear pulse lands here -> wand attached
-//   128..164 ms a wand cannot generate this width    -> standalone
-//   otherwise   ambiguous, leaves the link state alone
-//
-// Until there is evidence either way a wand is assumed, because mistaking a
-// wand's 180 ms fire pulse for a mode change desynchronises the pack from the
-// wand, which is far worse than a standalone tap firing once before the link
-// is identified.
-
-/** @brief Pulse width range matching the wand's fixed ear pulse. */
-static const uint16_t FIRE_WAND_EAR_MIN_TICKS = PACK_ISR_TICKS(76);
-static const uint16_t FIRE_WAND_EAR_MAX_TICKS = PACK_ISR_TICKS(124);
-/** @brief Pulse width range no wand lights board can produce. */
-static const uint16_t FIRE_WAND_GAP_MIN_TICKS = PACK_ISR_TICKS(128);
-static const uint16_t FIRE_WAND_GAP_MAX_TICKS = PACK_ISR_TICKS(164);
-/** @brief Contrary pulses needed to overturn an established link state. */
-static const uint8_t FIRE_LINK_FLIP_COUNT = 2;
-
-/** @brief What is currently believed to be driving the fire line. */
-static volatile FireLinkState fire_link = FIRE_LINK_UNKNOWN;
-
+/** @brief How long a level must hold before an edge is accepted. */
+static const uint32_t FIRE_DEBOUNCE_US = 12000;
+/** @brief Polls a level must hold for, on top of FIRE_DEBOUNCE_US. */
+static const uint8_t FIRE_DEBOUNCE_SAMPLES = 2;
+/** @brief Shortest pulse accepted as a deliberate tap. */
+static const uint32_t FIRE_TAP_MIN_US = 20000;
 /**
- * @brief Feed a completed fire pulse width into the link detector.
- * @param width_ticks Measured width of the pulse in ISR ticks.
+ * @brief Pulse width separating a TVG mode change from a fire request.
+ * @details The wand lights board emits a fixed 100 ms pulse for the ear
+ *          button and stretches its fire button to at least 180 ms, so this
+ *          sits between the two with 40 ms of margin either side.
  */
-static void classify_fire_pulse(uint16_t width_ticks) {
-    static uint8_t contrary_pulses = 0;
-    FireLinkState evidence = FIRE_LINK_UNKNOWN;
-
-    if ((width_ticks >= FIRE_WAND_EAR_MIN_TICKS) &&
-        (width_ticks <= FIRE_WAND_EAR_MAX_TICKS)) {
-        evidence = FIRE_LINK_WAND;
-    } else if ((width_ticks >= FIRE_WAND_GAP_MIN_TICKS) &&
-               (width_ticks <= FIRE_WAND_GAP_MAX_TICKS)) {
-        evidence = FIRE_LINK_STANDALONE;
-    }
-
-    if (evidence == FIRE_LINK_UNKNOWN) {
-        return;
-    }
-    if (fire_link == FIRE_LINK_UNKNOWN) {
-        fire_link = evidence;
-        contrary_pulses = 0;
-    } else if (evidence == fire_link) {
-        contrary_pulses = 0;
-    } else if (++contrary_pulses >= FIRE_LINK_FLIP_COUNT) {
-        // Only overturn a settled link after repeated disagreement so a single
-        // oddly timed press cannot flip the timing out from under the user.
-        fire_link = evidence;
-        contrary_pulses = 0;
-    }
-}
-
-/** @brief Tap window currently in force, in ISR ticks. */
-static uint16_t fire_tap_window_ticks(void) {
-    return (fire_link == FIRE_LINK_STANDALONE)
-               ? FIRE_TAP_WINDOW_STANDALONE_TICKS
-               : FIRE_TAP_WINDOW_WAND_TICKS;
-}
+static const uint32_t FIRE_TAP_WINDOW_US = 140000;
 
 /**
  * @brief ISR-based debounce and classification of the FIRE input.
@@ -236,64 +169,67 @@ static uint16_t fire_tap_window_ticks(void) {
 static void check_fire_switch_isr(void) {
     static bool fire_stable_pressed = false;
     static bool fire_last_sample = false;
-    static uint16_t fire_stable_cnt = 0;
-    static uint16_t fire_press_ticks = 0;
+    static uint8_t fire_stable_samples = 0;
+    static uint32_t fire_edge_us = 0;
+    static uint32_t fire_press_us = 0;
+    static bool fire_window_expired = false;
 
     const bool tvg = config_pack_is_tvg();
-    const uint16_t tap_window = fire_tap_window_ticks();
+    const uint32_t now_us = time_us_32();
 
     bool fire_sample_pressed = (gpio_get(GPI_FIRE) == 0);
     if (fire_sample_pressed != fire_last_sample) {
         fire_last_sample = fire_sample_pressed;
-        fire_stable_cnt = 0;
-    } else if (fire_stable_cnt < FIRE_DEBOUNCE_TICKS) {
-        fire_stable_cnt++;
+        fire_stable_samples = 0;
+        // Remember when the line actually moved, not when the debounce
+        // finished, so a measured width is the width of the real pulse.
+        fire_edge_us = now_us;
+    } else if (fire_stable_samples < FIRE_DEBOUNCE_SAMPLES) {
+        fire_stable_samples++;
     }
 
-    // Count every sample the contact has been seen closed for. The counter is
-    // frozen the moment the raw input opens, so a width can never creep past
-    // the tap window while the release is still being debounced. That keeps
-    // "released inside the window" and "still held at the end of it" mutually
-    // exclusive.
+    // Latched, so a bounce part way through a long hold cannot momentarily
+    // re-arm the gate and chop the firing sound in half. It can only be set
+    // while the line is still down, which is what keeps "released inside the
+    // window" and "still held at the end of it" mutually exclusive.
     if (fire_stable_pressed && fire_sample_pressed &&
-        (fire_press_ticks < UINT16_MAX)) {
-        fire_press_ticks++;
+        ((uint32_t)(now_us - fire_press_us) > FIRE_TAP_WINDOW_US)) {
+        fire_window_expired = true;
     }
 
-    if ((fire_stable_cnt >= FIRE_DEBOUNCE_TICKS) &&
-        (fire_stable_pressed != fire_sample_pressed)) {
+    bool fire_debounced = (fire_stable_samples >= FIRE_DEBOUNCE_SAMPLES) &&
+                          ((uint32_t)(now_us - fire_edge_us) >= FIRE_DEBOUNCE_US);
+    if (fire_debounced && (fire_stable_pressed != fire_sample_pressed)) {
         fire_stable_pressed = fire_sample_pressed;
         if (fire_stable_pressed) {
-            // Account for the samples that went into accepting the press:
-            // this one plus the FIRE_DEBOUNCE_TICKS before it.
-            fire_press_ticks = FIRE_DEBOUNCE_TICKS + 1;
+            fire_press_us = fire_edge_us;
+            fire_window_expired = false;
             user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_TAP_MASK;
             user_switches |= USER_SWITCH_FIRE_MASK;
         } else {
-            if (tvg) {
-                if ((fire_press_ticks >= FIRE_TAP_MIN_TICKS) &&
-                    (fire_press_ticks <= tap_window)) {
-                    user_switch_flags |= USER_SWITCH_FLAG_FIRE_TAP_MASK;
-                }
-                // Only TVG presses are useful evidence: they are the ones made
-                // while trying to change mode. Short bursts of firing in the
-                // other pack types would just muddy the classification.
-                classify_fire_pulse(fire_press_ticks);
+            // A tap is exactly "the window never expired", the same latch the
+            // gate below reads. Deciding it from the measured width instead
+            // would leave a sliver just past the window where the line was
+            // released between two polls: too long to be a tap, never seen
+            // held long enough to be a fire, so the press did nothing at all.
+            uint32_t width_us = (uint32_t)(fire_edge_us - fire_press_us);
+            if (tvg && !fire_window_expired && (width_us >= FIRE_TAP_MIN_US)) {
+                user_switch_flags |= USER_SWITCH_FLAG_FIRE_TAP_MASK;
             }
             // Drop the press straight away. Leaving it set would let fire_sw()
             // read true for the rest of the release debounce and turn a mode
             // change into a burst of firing.
             user_switches &= ~USER_SWITCH_FIRE_MASK;
-            fire_press_ticks = 0;
+            fire_window_expired = false;
         }
     }
 
-    // Re-evaluated every tick rather than latched on an edge so that the main
+    // Re-evaluated every poll rather than latched on an edge so that the main
     // loop clearing flags, or the pack type changing mid-press, cannot leave
     // the gate stuck in the wrong position.
     if (!tvg) {
         user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_MASK;
-    } else if (fire_stable_pressed && (fire_press_ticks <= tap_window)) {
+    } else if (fire_stable_pressed && !fire_window_expired) {
         user_switch_flags |= USER_SWITCH_FLAG_FIRE_HELD_MASK;
     } else {
         user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_HELD_MASK;
@@ -440,18 +376,6 @@ bool config_pack_is_tvg(void) {
  * @return 0 for clockwise, 1 for counter-clockwise.
  */
 uint8_t config_cyclotron_dir(void) { return 0; }
-
-/**
- * @brief Reports what the fire line detector currently believes is attached.
- */
-FireLinkState fire_link_state(void) { return fire_link; }
-
-/**
- * @brief Longest fire pulse currently treated as a TVG mode change request.
- */
-uint16_t fire_tap_window_ms(void) {
-    return (uint16_t)(fire_tap_window_ticks() * PACK_ISR_INTERVAL_MS);
-}
 
 #ifdef __cplusplus
 }

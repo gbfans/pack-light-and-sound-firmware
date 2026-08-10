@@ -42,8 +42,9 @@ This matrix must be fully tested and passed before submitting changes. `N` refer
 | **TVG Lights** | Normal Operation | TVG patterns run as documented. Remainder LEDs are off. |
 | **TVG Fire Timing** | Wand lights attached, ear tap (100 ms pulse) | Weapon mode changes. Nothing fires, and the wand stays in step with the pack. |
 | | Wand lights attached, quick fire tap (180 ms pulse) | Short burst of firing. Mode does **not** change. |
-| | Standalone, quick tap of the fire switch | Weapon mode changes (allow one tap after power-up for the firmware to settle on the standalone window). |
-| | Standalone, press held past ~300 ms | Fires; mode does not change. |
+| | Wand lights attached, fire held | Fires continuously, starting ~140 ms in. Mode does not change. |
+| | Fire pulse of any length | Exactly one outcome — never both a mode change and a shot, never neither. |
+| | Repeat the above with lots of LEDs lit (ADJ1 = 40, party or Afterlife animations) | Identical results. The threshold is timed off the hardware clock, so LED load must not move it. |
 | | Any non-TVG pack type | Firing starts on the debounced press; taps never change mode. |
 
 

@@ -168,35 +168,35 @@ When the pack is set to a TVG mode (via `PackSel0`/`PackSel1` DIP switches), the
 
 #### Fire button timing in TVG modes
 In a TVG mode a press on the fire input is ambiguous until it either ends or
-outlasts the **tap window**:
+outlasts the **140 ms tap window**:
 
 - The pulse **ends inside** the window → mode change; nothing fires.
 - The pulse is **still active at the end** of the window → firing starts right
   then, and no mode change happens.
 
-The two outcomes are mutually exclusive, so a single press can never both fire
-and change mode. In every non-TVG pack type there are no weapon modes to cycle,
-so firing starts as soon as the fire contact is debounced (about 12 ms) and the
-window is not used at all.
+The two outcomes are exactly complementary: a press can never do both, and
+never do nothing. Because of that, firing in a TVG mode is always held off for
+the length of the window — there is no way to know which request a press is
+until it resolves.
 
-The window itself depends on what is driving the fire input, which the firmware
-works out on its own — there is no setting to change:
+The 140 ms figure comes from the Wand Lights board, which conditions the line
+rather than passing the button through: the ear button emits a fixed 100 ms
+pulse and the fire button is stretched to at least 180 ms, so 140 ms sits
+between them with 40 ms of margin either side. Wired directly to a switch, the
+same threshold applies and the tap has to be made by hand.
 
-| Fire input driven by | Tap window | Why |
-|----------------------|-----------|-----|
-| A wand lights board | 140 ms | The wand stretches its own fire button to at least 180 ms and emits a fixed 100 ms pulse for the ear button, so 140 ms cleanly separates the two. |
-| A plain switch (standalone) | 300 ms | Nobody can tap a bare button under 140 ms reliably. |
+In every non-TVG pack type there are no weapon modes to cycle, so firing starts
+as soon as the fire contact is debounced (about 12 ms) and the window is not
+used at all.
 
-A wand lights board never passes the raw button through, so it can only ever
-produce a pulse of roughly 100 ms or one of 180 ms and up. The firmware watches
-the width of completed fire pulses in TVG modes: one that lands near 100 ms can
-only have come from a wand's ear button, and one that lands between about
-128 ms and 164 ms is a width no wand can generate, so it must be a bare switch.
-Anything else is ambiguous and is ignored. A wand is assumed until proven
-otherwise, and once the link has settled it takes two disagreeing presses to
-change the verdict, so an unusually timed press cannot move the window out from
-under you. In standalone use expect the first tap after power-up to fire before
-the firmware settles on the longer window.
+Widths are measured against the hardware microsecond timer, not by counting
+passes through the pack timer ISR. The ISR is armed with a positive delay,
+which the Pico SDK defines as the gap between one callback ending and the next
+starting, and the same callback drives the LED output — so the interval between
+two polls is 4 ms plus however long the previous pass took, and it moves with
+LED load. Timestamping keeps the threshold at a true 140 ms; the poll rate only
+sets the resolution, so the boundary lands within one poll of 140 ms no matter
+what the animations are doing.
 
 ## Building with Visual Studio Code
 
