@@ -105,6 +105,7 @@ void song_monitor(void) {
         party_mode_set_animation(
             (party_animation_t)(party_animation_index - 1));
       }
+      // Consumed here, so mode_monitor() must not see it as well.
       if (tap_now) {
         clear_fire_tap();
       }
@@ -123,9 +124,12 @@ void song_monitor(void) {
     break;
   }
 
-  if (tap_now) {
-    clear_fire_tap();
-  }
+  // Deliberately no blanket clear_fire_tap() here. This monitor runs at the
+  // top of every pass through the state machine, so swallowing every tap
+  // would leave mode_monitor() nothing to act on and TVG weapon cycling would
+  // only work when the release happened to land between the two calls. Party
+  // mode above clears the taps it actually uses; everything else belongs to
+  // whichever state is running.
   last_fire_state = fire_now;
 }
 
@@ -430,14 +434,16 @@ void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
  * @brief Monitor fire taps to cycle through available pack modes for TVG.
  */
 void mode_monitor(void) {
-  if (song_is_playing()) {
-    return;
-  }
   if (!fire_tap()) {
     return;
   }
-  if ((config_pack_type() == PACK_TYPE_TVG_FADE) ||
-      (config_pack_type() == PACK_TYPE_AFTER_TVG)) {
+  if (song_is_playing()) {
+    // Modes do not cycle during a song. Drop the tap rather than leaving it
+    // pending, or it would change mode the moment the song ends.
+    clear_fire_tap();
+    return;
+  }
+  if (config_pack_is_tvg()) {
     PackMode prev = pack_state_get_mode();
     PackMode next = (PackMode)((int)prev + 1);
     switch (prev) {

@@ -166,6 +166,43 @@ appropriate value with ADJ1.
 ### TVG Lights
 When the pack is set to a TVG mode (via `PackSel0`/`PackSel1` DIP switches), the fire button can be tapped (when not firing) to cycle through different weapon modes. Each mode has a unique color for the cyclotron and powercell, as defined in the firmware. These modes include the Proton Stream, Slime Blower, Stasis Stream, and more. The TVG lights respect the `N` setting from the ADJ1 potentiometer, meaning only the selected number of LEDs will be active.
 
+#### Fire button timing in TVG modes
+In a TVG mode a press on the fire input is ambiguous until it either ends or
+outlasts the **135 ms tap window**:
+
+- The pulse **ends inside** the window → mode change; nothing fires.
+- The pulse is **still active at the end** of the window → firing starts right
+  then, and no mode change happens.
+
+The two outcomes are exactly complementary: a press can never do both, and
+never do nothing. Because of that, firing in a TVG mode is always held off for
+the length of the window — there is no way to know which request a press is
+until it resolves.
+
+The figure comes from the Wand Lights board, which conditions the line rather
+than passing the button through: the ear button emits a fixed 100 ms pulse and
+the fire button is stretched to at least 180 ms. Sweeping the threshold across
+poll intervals of 4 to 6 ms and every phase alignment of the pulse against the
+poll grid, a 100 ms pulse stays a mode change from 97 ms upwards and a 180 ms
+pulse still fires up to 173 ms; 135 ms is the midpoint of that band, so the
+margin is an equal 38 ms on each side. Rebuild with
+`-DFIRE_TAP_WINDOW_MS=<value>` to re-sweep it against real hardware. Wired
+directly to a switch the same threshold applies, and the tap has to be made by
+hand.
+
+In every non-TVG pack type there are no weapon modes to cycle, so firing starts
+as soon as the fire contact is debounced (about 12 ms) and the window is not
+used at all.
+
+Widths are measured against the hardware microsecond timer, not by counting
+passes through the pack timer ISR. The ISR is armed with a positive delay,
+which the Pico SDK defines as the gap between one callback ending and the next
+starting, and the same callback drives the LED output — so the interval between
+two polls is 4 ms plus however long the previous pass took, and it moves with
+LED load. Timestamping keeps the threshold at a true 135 ms; the poll rate only
+sets the resolution, so the boundary lands within one poll of 135 ms no matter
+what the animations are doing.
+
 ## Building with Visual Studio Code
 
 1. Install [Visual Studio Code](https://code.visualstudio.com/) and the

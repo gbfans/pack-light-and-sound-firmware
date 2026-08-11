@@ -22,6 +22,7 @@ extern "C" {
 #endif
 
 // === GPIO assignments ===
+static const uint GPI_FIRE = 15;
 static const uint GPO_NBUSY_TO_WAND = 12;
 static const uint GPO_VENT_LIGHT = 28;
 static const uint GPO_MUTE = 22;
@@ -44,6 +45,13 @@ static const uint8_t USER_SWITCH_PU_MASK = 0x10;
 static const uint8_t USER_SWITCH_VALID_MASK =
     (USER_SWITCH_PACK_PU_MASK | USER_SWITCH_VENT_MASK |
      USER_SWITCH_SONG_MASK | USER_SWITCH_FIRE_MASK | USER_SWITCH_PU_MASK);
+/**
+ * @brief Switches handled by the shared slow debounce.
+ * @details FIRE is deliberately excluded: it has its own fast debounce so
+ *          that firing can start as soon as the contact is stable.
+ */
+static const uint8_t USER_SWITCH_DEBOUNCED_MASK =
+    (USER_SWITCH_VALID_MASK & (uint8_t)~USER_SWITCH_FIRE_MASK);
 
 // === User switch event/flag masks ===
 static const uint8_t USER_SWITCH_FLAG_FIRE_HELD_MASK = 0x01;
@@ -102,6 +110,7 @@ void unmute_audio(void);
 
 // --- Configuration accessors ---
 PackType config_pack_type(void);
+bool config_pack_is_tvg(void);
 uint8_t config_cyclotron_dir(void);
 
 #ifdef __cplusplus

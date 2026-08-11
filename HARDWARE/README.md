@@ -114,7 +114,12 @@ Only four user switches are needed to control the sounds:
 2. **Fire** –
    - Hold for continuous firing (Proton Stream)
    - Hold and release for single shots (Boson Dart in TVG modes)
-   - Tap quickly to cycle TVG weapons
+   - Tap quickly to cycle TVG weapons. A tap counts as a mode change only if the
+     pulse ends within 135 ms; still held past that and the pack fires instead.
+     The Wand Lights board makes this exact by emitting a fixed 100 ms pulse for
+     the ear button and stretching the fire button to at least 180 ms. Non‑TVG
+     pack types have no weapon modes and fire as soon as the contact is
+     debounced.
 3. **Song** – toggling this input starts the Ghostbusters theme song. It works
    even after a power‑down sound, as long as battery power remains.
 4. **Vent** – plays the vent sound. In TVG pack sounds, a “dry vent” is heard if

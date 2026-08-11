@@ -76,6 +76,14 @@ bool pack_timer_isr(struct repeating_timer *t) {
 
 /**
  * @brief Initializes the repeating timer used for pack updates.
+ * @note The delay is positive, which the SDK defines as the gap between one
+ *       callback ending and the next starting rather than a fixed period. The
+ *       callback also drives the LED output, and FastLED caps the RP2040
+ *       clockless driver at 400 Hz with a busy-wait, so the real interval
+ *       between two passes is `pack_isr_interval_ms` plus however long the
+ *       previous pass took. Anything that has to measure a real duration must
+ *       therefore read the hardware timer rather than count callbacks - see
+ *       the FIRE input timing in `klystron_IO_support.cpp`.
  */
 void init_pack_timer(void) {
     static struct repeating_timer timer;

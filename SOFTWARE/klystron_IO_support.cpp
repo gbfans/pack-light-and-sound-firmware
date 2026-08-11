@@ -132,6 +132,130 @@ void check_dip_switches_isr(void) {
     }
 }
 
+// === FIRE input timing ===
+//
+// All of these are wall-clock microseconds read from the hardware timer, not
+// counts of ISR calls. The pack timer is armed with a positive delay, which
+// the SDK defines as the gap between one callback ending and the next
+// starting, and the callback also drives the LED output, so the interval
+// between two polls is the nominal 4 ms plus however long the last pass took.
+// Counting polls would make every threshold below drift with LED load;
+// timestamping the edges keeps 140 ms meaning 140 ms.
+
+/** @brief How long a level must hold before an edge is accepted. */
+static const uint32_t FIRE_DEBOUNCE_US = 12000;
+/** @brief Polls a level must hold for, on top of FIRE_DEBOUNCE_US. */
+static const uint8_t FIRE_DEBOUNCE_SAMPLES = 2;
+/** @brief Shortest pulse accepted as a deliberate tap. */
+static const uint32_t FIRE_TAP_MIN_US = 20000;
+/**
+ * @brief Pulse width separating a TVG mode change from a fire request, in ms.
+ * @details The wand lights board emits a fixed 100 ms pulse for the ear button
+ *          and stretches its fire button to at least 180 ms, so the useful
+ *          range for this threshold is bounded by those two figures.
+ *
+ *          Sweeping the classifier across poll intervals of 4 to 6 ms and
+ *          every phase alignment of the pulse against the poll grid, a 100 ms
+ *          pulse stays a mode change for any threshold from 97 ms up, and a
+ *          180 ms pulse still fires for any threshold up to 173 ms. 135 ms is
+ *          the midpoint of that 97..173 band, so the margin is an equal 38 ms
+ *          on each side.
+ *
+ *          The debounce takes nothing out of the pulse - widths are measured
+ *          between the raw edges, so debouncing delays when an edge is
+ *          believed, not what it measures. The band is narrower than 100..180
+ *          purely because "still held" can only be noticed at a poll, which
+ *          shortens an observed width by up to one poll interval.
+ *
+ *          Overridable at build time (-DFIRE_TAP_WINDOW_MS=...) so the
+ *          threshold can be re-swept against real hardware without editing
+ *          source.
+ */
+#ifndef FIRE_TAP_WINDOW_MS
+#define FIRE_TAP_WINDOW_MS 135
+#endif
+static const uint32_t FIRE_TAP_WINDOW_US = FIRE_TAP_WINDOW_MS * 1000u;
+
+/**
+ * @brief ISR-based debounce and classification of the FIRE input.
+ * @details In TVG modes a press is ambiguous until the tap window has passed:
+ *          a pulse that ends inside the window is a mode change request and a
+ *          pulse still active at the end of it is a fire request. Firing is
+ *          therefore held off until the window expires, and the tap event is
+ *          only raised once the release has been debounced. Every other pack
+ *          type has no mode cycling, so firing starts as soon as the contact
+ *          is debounced.
+ */
+static void check_fire_switch_isr(void) {
+    static bool fire_stable_pressed = false;
+    static bool fire_last_sample = false;
+    static uint8_t fire_stable_samples = 0;
+    static uint32_t fire_edge_us = 0;
+    static uint32_t fire_press_us = 0;
+    static bool fire_window_expired = false;
+
+    const bool tvg = config_pack_is_tvg();
+    const uint32_t now_us = time_us_32();
+
+    bool fire_sample_pressed = (gpio_get(GPI_FIRE) == 0);
+    if (fire_sample_pressed != fire_last_sample) {
+        fire_last_sample = fire_sample_pressed;
+        fire_stable_samples = 0;
+        // Remember when the line actually moved, not when the debounce
+        // finished, so a measured width is the width of the real pulse.
+        fire_edge_us = now_us;
+    } else if (fire_stable_samples < FIRE_DEBOUNCE_SAMPLES) {
+        fire_stable_samples++;
+    }
+
+    // Latched, so a bounce part way through a long hold cannot momentarily
+    // re-arm the gate and chop the firing sound in half. It can only be set
+    // while the line is still down, which is what keeps "released inside the
+    // window" and "still held at the end of it" mutually exclusive.
+    if (fire_stable_pressed && fire_sample_pressed &&
+        ((uint32_t)(now_us - fire_press_us) > FIRE_TAP_WINDOW_US)) {
+        fire_window_expired = true;
+    }
+
+    bool fire_debounced = (fire_stable_samples >= FIRE_DEBOUNCE_SAMPLES) &&
+                          ((uint32_t)(now_us - fire_edge_us) >= FIRE_DEBOUNCE_US);
+    if (fire_debounced && (fire_stable_pressed != fire_sample_pressed)) {
+        fire_stable_pressed = fire_sample_pressed;
+        if (fire_stable_pressed) {
+            fire_press_us = fire_edge_us;
+            fire_window_expired = false;
+            user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_TAP_MASK;
+            user_switches |= USER_SWITCH_FIRE_MASK;
+        } else {
+            // A tap is exactly "the window never expired", the same latch the
+            // gate below reads. Deciding it from the measured width instead
+            // would leave a sliver just past the window where the line was
+            // released between two polls: too long to be a tap, never seen
+            // held long enough to be a fire, so the press did nothing at all.
+            uint32_t width_us = (uint32_t)(fire_edge_us - fire_press_us);
+            if (tvg && !fire_window_expired && (width_us >= FIRE_TAP_MIN_US)) {
+                user_switch_flags |= USER_SWITCH_FLAG_FIRE_TAP_MASK;
+            }
+            // Drop the press straight away. Leaving it set would let fire_sw()
+            // read true for the rest of the release debounce and turn a mode
+            // change into a burst of firing.
+            user_switches &= ~USER_SWITCH_FIRE_MASK;
+            fire_window_expired = false;
+        }
+    }
+
+    // Re-evaluated every poll rather than latched on an edge so that the main
+    // loop clearing flags, or the pack type changing mid-press, cannot leave
+    // the gate stuck in the wrong position.
+    if (!tvg) {
+        user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_MASK;
+    } else if (fire_stable_pressed && !fire_window_expired) {
+        user_switch_flags |= USER_SWITCH_FLAG_FIRE_HELD_MASK;
+    } else {
+        user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_HELD_MASK;
+    }
+}
+
 /**
  * @brief ISR-based function to read and debounce the user-facing switches.
  * @details Called by the repeating timer ISR. It debounces the main switches
@@ -142,24 +266,18 @@ void check_dip_switches_isr(void) {
 void check_user_switches_isr(void) {
     static uint8_t config_user_last = 0;
     static uint8_t debounce_user_cnt = 0;
-    static uint8_t debounce_fire_cnt = 0;
     static bool user_inputs_initialized = false;
     const uint8_t debounce_user_done = 15;
-    // Fire tap timing is evaluated in ISR ticks (pack_isr_interval_ms = 4 ms).
-    // Keep a small minimum to reject noise, but gate fire immediately so short
-    // presses in TVG mode do not transition into firing before release.
-    const uint8_t debounce_fire_hold_block = 1; // 4 ms to suppress early fire
-    const uint8_t debounce_fire_min = 3;        // 12 ms minimum valid tap
-    const uint8_t debounce_fire_max = 100;      // 400 ms tap upper bound
 
     uint8_t config_user_maybe = gpio_get(11);
     for (int gpio = 13; gpio <= 16; gpio++) {
         config_user_maybe |= (gpio_get(gpio) << (gpio - 13 + 1));
     }
 
-    // Invert and mask to the five valid user switch bits
-    config_user_maybe = (~config_user_maybe) & USER_SWITCH_VALID_MASK;
-    if (config_user_maybe != (user_switches & USER_SWITCH_VALID_MASK)) {
+    // Invert and mask to the user switch bits debounced here. FIRE is handled
+    // by check_fire_switch_isr() below, which owns that bit.
+    config_user_maybe = (~config_user_maybe) & USER_SWITCH_DEBOUNCED_MASK;
+    if (config_user_maybe != (user_switches & USER_SWITCH_DEBOUNCED_MASK)) {
 
         if (config_user_maybe != config_user_last) {
             debounce_user_cnt = 0;
@@ -188,58 +306,15 @@ void check_user_switches_isr(void) {
                 user_switch_flags &= ~USER_SWITCH_FLAG_EDGE_EVENTS_MASK;
             }
 
-            user_switches = config_user_maybe;
+            user_switches =
+                (user_switches & USER_SWITCH_FIRE_MASK) | config_user_maybe;
             debounce_user_cnt = 0;
         }
     } else {
         debounce_user_cnt = 0;
     }
 
-    if (((config_dip_sw & DIP_PACKSEL_MASK) == DIP_PACKSEL1_MASK) ||
-        (((config_dip_sw & DIP_PACKSEL_MASK) == DIP_PACKSEL_MASK) &&
-         (config_dip_sw & DIP_HEAT_MASK))) {
-        static bool fire_stable_pressed = false;
-        static bool fire_last_sample = false;
-        static uint8_t fire_stable_cnt = 0;
-        const uint8_t fire_stable_done = 3;
-
-        bool fire_sample_pressed = (gpio_get(15) == 0);
-        if (fire_sample_pressed != fire_last_sample) {
-            fire_last_sample = fire_sample_pressed;
-            fire_stable_cnt = 0;
-        } else if (fire_stable_cnt < fire_stable_done) {
-            fire_stable_cnt++;
-        }
-
-        if ((fire_stable_cnt >= fire_stable_done) &&
-            (fire_stable_pressed != fire_sample_pressed)) {
-            fire_stable_pressed = fire_sample_pressed;
-            if (!fire_stable_pressed) {
-                if ((debounce_fire_cnt >= debounce_fire_min) &&
-                    (debounce_fire_cnt <= debounce_fire_max)) {
-                    user_switch_flags |= USER_SWITCH_FLAG_FIRE_TAP_MASK;
-                }
-                user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_HELD_MASK;
-                debounce_fire_cnt = 0;
-            } else {
-                user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_TAP_MASK;
-            }
-        }
-
-        if (fire_stable_pressed) {
-            if (debounce_fire_cnt < 250) {
-                debounce_fire_cnt++;
-            }
-            if (debounce_fire_cnt == debounce_fire_hold_block) {
-                user_switch_flags |= USER_SWITCH_FLAG_FIRE_HELD_MASK;
-            } else if (debounce_fire_cnt == debounce_fire_max) {
-                user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_MASK;
-            }
-        }
-    } else {
-        debounce_fire_cnt = 0;
-        user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_MASK;
-    }
+    check_fire_switch_isr();
 }
 
 // --- Switch state accessors ---
@@ -264,7 +339,9 @@ bool wand_standby_sw(void) { return (!pu_sw() && vent_sw()); }
 
 // --- Flag clearing functions ---
 void clear_fire_tap(void) {
-    user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_MASK;
+    // Only the tap event is cleared here. The held-off flag tracks the state
+    // of the button itself and is owned by check_fire_switch_isr().
+    user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_TAP_MASK;
 }
 void clear_song_toggle(void) {
     user_switch_flags &= ~USER_SWITCH_FLAG_SONG_TOGGLE_MASK;
@@ -301,6 +378,16 @@ PackType config_pack_type(void) {
         }
     }
     return pack_type;
+}
+
+/**
+ * @brief Reports whether the configured pack type cycles TVG weapon modes.
+ * @return True for the TVG and Afterlife TVG pack types.
+ */
+bool config_pack_is_tvg(void) {
+    PackType pack_type = config_pack_type();
+    return ((pack_type == PACK_TYPE_TVG_FADE) ||
+            (pack_type == PACK_TYPE_AFTER_TVG));
 }
 
 /**
