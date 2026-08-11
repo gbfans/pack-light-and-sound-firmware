@@ -149,12 +149,32 @@ static const uint8_t FIRE_DEBOUNCE_SAMPLES = 2;
 /** @brief Shortest pulse accepted as a deliberate tap. */
 static const uint32_t FIRE_TAP_MIN_US = 20000;
 /**
- * @brief Pulse width separating a TVG mode change from a fire request.
- * @details The wand lights board emits a fixed 100 ms pulse for the ear
- *          button and stretches its fire button to at least 180 ms, so this
- *          sits between the two with 40 ms of margin either side.
+ * @brief Pulse width separating a TVG mode change from a fire request, in ms.
+ * @details The wand lights board emits a fixed 100 ms pulse for the ear button
+ *          and stretches its fire button to at least 180 ms, so the useful
+ *          range for this threshold is bounded by those two figures.
+ *
+ *          Sweeping the classifier across poll intervals of 4 to 6 ms and
+ *          every phase alignment of the pulse against the poll grid, a 100 ms
+ *          pulse stays a mode change for any threshold from 97 ms up, and a
+ *          180 ms pulse still fires for any threshold up to 173 ms. 135 ms is
+ *          the midpoint of that 97..173 band, so the margin is an equal 38 ms
+ *          on each side.
+ *
+ *          The debounce takes nothing out of the pulse - widths are measured
+ *          between the raw edges, so debouncing delays when an edge is
+ *          believed, not what it measures. The band is narrower than 100..180
+ *          purely because "still held" can only be noticed at a poll, which
+ *          shortens an observed width by up to one poll interval.
+ *
+ *          Overridable at build time (-DFIRE_TAP_WINDOW_MS=...) so the
+ *          threshold can be re-swept against real hardware without editing
+ *          source.
  */
-static const uint32_t FIRE_TAP_WINDOW_US = 140000;
+#ifndef FIRE_TAP_WINDOW_MS
+#define FIRE_TAP_WINDOW_MS 135
+#endif
+static const uint32_t FIRE_TAP_WINDOW_US = FIRE_TAP_WINDOW_MS * 1000u;
 
 /**
  * @brief ISR-based debounce and classification of the FIRE input.

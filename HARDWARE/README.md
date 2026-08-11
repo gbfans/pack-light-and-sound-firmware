@@ -115,7 +115,7 @@ Only four user switches are needed to control the sounds:
    - Hold for continuous firing (Proton Stream)
    - Hold and release for single shots (Boson Dart in TVG modes)
    - Tap quickly to cycle TVG weapons. A tap counts as a mode change only if the
-     pulse ends within 140 ms; still held past that and the pack fires instead.
+     pulse ends within 135 ms; still held past that and the pack fires instead.
      The Wand Lights board makes this exact by emitting a fixed 100 ms pulse for
      the ear button and stretching the fire button to at least 180 ms. Non‑TVG
      pack types have no weapon modes and fire as soon as the contact is
