@@ -262,6 +262,22 @@ static void run_future(const Sequencer& seq, int frames) {
   }
 }
 
+// ADJ1 ring-size confirmation (PS_FEEDBACK): solid red/green/blue for
+// 4/24/32, scrolling rainbow for 40, then dark once it times out.
+static void run_ring_feedback(int n, int frames) {
+  g_cyclotron_led_count = (uint8_t)n;
+  g_cyclotron_controller.play(
+      std::make_unique<RingSizeFeedbackAnimation>(4000),
+      make_config(g_cyclotron_leds, n, CRGB::Black, 0));
+  for (int i = 0; i < frames; ++i) {
+    if (!g_cyclotron_controller.isRunning()) {
+      fill_solid(g_cyclotron_leds, n, CRGB::Black);
+    }
+    step_controllers();
+    record_frame(g_cyclotron_leds, n);
+  }
+}
+
 static void run_party(party_animation_t animation, int n, int frames) {
   CRGB* strip = g_cyclotron_leds;
   int strip_len = n;
@@ -314,6 +330,11 @@ int main() {
       run_party(party.animation, led_count, frames ? frames : PARTY_FRAMES);
       return 0;
     }
+  }
+
+  if (name == "ring_size_feedback") {
+    run_ring_feedback(led_count, frames ? frames : 300);
+    return 0;
   }
 
   // "<mode>_<base>" split on the known mode names, not the first underscore:

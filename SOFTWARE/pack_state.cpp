@@ -135,7 +135,7 @@ void feedback_request(void) {
         feedback_anim_needs_start = true;
     } else if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
         // Animation already running; update LED count and extend duration.
-        static_cast<FeedbackRainbowAnimation*>(anim)->updateConfig(cy_config, FEEDBACK_DURATION_MS);
+        static_cast<RingSizeFeedbackAnimation*>(anim)->updateConfig(cy_config, FEEDBACK_DURATION_MS);
     } else {
         feedback_anim_needs_start = true;
     }
@@ -226,7 +226,7 @@ void pack_state_process(void) {
             cy_config.leds = g_cyclotron_leds;
             cy_config.num_leds = g_cyclotron_led_count;
             g_cyclotron_controller.play(
-                std::make_unique<FeedbackRainbowAnimation>(FEEDBACK_DURATION_MS),
+                std::make_unique<RingSizeFeedbackAnimation>(FEEDBACK_DURATION_MS),
                 cy_config);
             feedback_anim_needs_start = false;
         }

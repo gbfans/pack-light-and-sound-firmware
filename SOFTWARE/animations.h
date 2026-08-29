@@ -5,14 +5,19 @@
 #include "party_sequences.h"
 
 /**
- * @brief Rainbow feedback animation for ADJ1 potentiometer changes.
- *        The first \c N LEDs display a rotating rainbow while any remaining
- *        pixels are forced to black. The animation automatically times out
- *        after a fixed duration.
+ * @brief Ring-size feedback for ADJ1 potentiometer changes.
+ * @details Each setting shows an unmistakable confirmation on the first \c N
+ *          LEDs: solid red for 4, solid green for 24, solid blue for 32, and
+ *          a scrolling rainbow for 40. The color says which setting is
+ *          selected even on rings with fewer physical LEDs than N - with the
+ *          old always-rainbow feedback, a 4-LED ring showed a rainbow slice
+ *          at every setting, so every knob position looked "confirmed".
+ *          Remaining pixels are forced to black and the animation times out
+ *          after a fixed duration (extended while the knob keeps moving).
  */
-class FeedbackRainbowAnimation : public Animation {
+class RingSizeFeedbackAnimation : public Animation {
 public:
-    explicit FeedbackRainbowAnimation(uint32_t duration_ms) : duration_ms(duration_ms) {}
+    explicit RingSizeFeedbackAnimation(uint32_t duration_ms) : duration_ms(duration_ms) {}
     void start(const AnimationConfig& config) override;
     void update(uint32_t dt) override;
     bool isDone() override;

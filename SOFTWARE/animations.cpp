@@ -343,7 +343,7 @@ bool FadeAnimation::isDone() { return done; }
 
 // --- Feedback Animations ---
 
-void FeedbackRainbowAnimation::start(const AnimationConfig& config) {
+void RingSizeFeedbackAnimation::start(const AnimationConfig& config) {
     Animation::start(config);
     this->elapsed_ms = 0;
 
@@ -357,15 +357,32 @@ void FeedbackRainbowAnimation::start(const AnimationConfig& config) {
     }
 }
 
-void FeedbackRainbowAnimation::update(uint32_t dt) {
+void RingSizeFeedbackAnimation::update(uint32_t dt) {
     Animation::update(dt);
     this->elapsed_ms += dt;
 
-    // Animate a full rainbow across the active LEDs.  The hue shifts over
-    // time so the colors appear to rotate while always covering the spectrum.
-    uint8_t start_hue = (this->elapsed_ms / 10) & 0xFF;
-    uint8_t hue_step = config.num_leds ? (255 / config.num_leds) : 0;
-    fill_rainbow(config.leds, config.num_leds, start_hue, hue_step);
+    // One unmistakable look per ring size, so the setting reads correctly
+    // even on rings with fewer physical LEDs than the selected count.
+    switch (config.num_leds) {
+    case 4:
+        fill_solid(config.leds, config.num_leds, CRGB::Red);
+        break;
+    case 24:
+        fill_solid(config.leds, config.num_leds, CRGB::Green);
+        break;
+    case 32:
+        fill_solid(config.leds, config.num_leds, CRGB::Blue);
+        break;
+    default: {
+        // 40 (and any future size): scrolling rainbow across the ring. The
+        // hue shifts over time so the colors rotate while always covering
+        // the spectrum.
+        uint8_t start_hue = (this->elapsed_ms / 10) & 0xFF;
+        uint8_t hue_step = config.num_leds ? (255 / config.num_leds) : 0;
+        fill_rainbow(config.leds, config.num_leds, start_hue, hue_step);
+        break;
+    }
+    }
 
     // Ensure any LEDs beyond the active range remain dark to prevent
     // residual pixels from previous animations when fewer LEDs are active.
@@ -377,11 +394,11 @@ void FeedbackRainbowAnimation::update(uint32_t dt) {
 
 }
 
-bool FeedbackRainbowAnimation::isDone() {
+bool RingSizeFeedbackAnimation::isDone() {
     return this->elapsed_ms >= this->duration_ms;
 }
 
-void FeedbackRainbowAnimation::updateConfig(const AnimationConfig& config, uint32_t extend_ms) {
+void RingSizeFeedbackAnimation::updateConfig(const AnimationConfig& config, uint32_t extend_ms) {
     uint32_t saved_elapsed = this->elapsed_ms;
     Animation::start(config);
     this->elapsed_ms = saved_elapsed;

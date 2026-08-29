@@ -613,10 +613,12 @@ void vent_monitor(void) {
  *          allowed `N` values: {4, 24, 32, 40}. Changes are applied immediately
  *          and the remainder of the cyclotron LEDs are cleared so that reducing
  *          `N` never leaves stray pixels lit. When the value changes, it
- *          optionally triggers a brief rainbow animation on the cyclotron LEDs
- *          as feedback when the pack is off. The animation is handled by a
- *          temporary pack state so it does not interfere with normal
- *          cyclotron control.
+ *          triggers a brief confirmation on the cyclotron LEDs when the pack
+ *          is off: solid red for 4, green for 24, blue for 32, and a
+ *          scrolling rainbow for 40, so the setting is readable even on
+ *          rings with fewer physical LEDs than the selected count. The
+ *          animation is handled by a temporary pack state so it does not
+ *          interfere with normal cyclotron control.
  */
 void ring_monitor(void) {
   if (party_mode_is_active())

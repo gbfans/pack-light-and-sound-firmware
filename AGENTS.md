@@ -51,10 +51,12 @@ This matrix must be fully tested and passed before submitting changes. `N` refer
 ## 3. Control References
 
 - **ADJ1 Potentiometer**: Controls the number of active LEDs in the cyclotron ring (`N`).
-  - Position 1: N=4
-  - Position 2: N=24
-  - Position 3: N=32
-  - Position 4: N=40
+  Changing it while the pack is off shows a confirmation on the ring
+  (readable even with fewer physical LEDs than `N`):
+  - Position 1: N=4 — solid red
+  - Position 2: N=24 — solid green
+  - Position 3: N=32 — solid blue
+  - Position 4: N=40 — scrolling rainbow
 - **DIP Switches**:
   - **1 (PackSel0)** & **2 (PackSel1)**: Select pack variant (Classic, TVG, Afterlife).
   - **3 (Heat)**: Enables heating effects.

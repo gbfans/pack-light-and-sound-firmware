@@ -52,6 +52,14 @@ Activate by starting a song with the song switch, then tapping the fire button w
 | Random Sparkle | ![](SOFTWARE/animations/party_random_sparkle_15_rainbow.gif) [MP4](SOFTWARE/animations/party_random_sparkle_15_rainbow.mp4) | ![](SOFTWARE/animations/party_random_sparkle_16_rainbow.gif) [MP4](SOFTWARE/animations/party_random_sparkle_16_rainbow.mp4) | ![](SOFTWARE/animations/party_random_sparkle_4_rainbow.gif) [MP4](SOFTWARE/animations/party_random_sparkle_4_rainbow.mp4) | ![](SOFTWARE/animations/party_random_sparkle_24_rainbow.gif) [MP4](SOFTWARE/animations/party_random_sparkle_24_rainbow.mp4) | ![](SOFTWARE/animations/party_random_sparkle_32_rainbow.gif) [MP4](SOFTWARE/animations/party_random_sparkle_32_rainbow.mp4) | ![](SOFTWARE/animations/party_random_sparkle_40_rainbow.gif) [MP4](SOFTWARE/animations/party_random_sparkle_40_rainbow.mp4) |
 | Beat Meter | ![](SOFTWARE/animations/party_beat_meter_15_rainbow.gif) [MP4](SOFTWARE/animations/party_beat_meter_15_rainbow.mp4) | ![](SOFTWARE/animations/party_beat_meter_16_rainbow.gif) [MP4](SOFTWARE/animations/party_beat_meter_16_rainbow.mp4) | ![](SOFTWARE/animations/party_beat_meter_4_rainbow.gif) [MP4](SOFTWARE/animations/party_beat_meter_4_rainbow.mp4) | ![](SOFTWARE/animations/party_beat_meter_24_rainbow.gif) [MP4](SOFTWARE/animations/party_beat_meter_24_rainbow.mp4) | ![](SOFTWARE/animations/party_beat_meter_32_rainbow.gif) [MP4](SOFTWARE/animations/party_beat_meter_32_rainbow.mp4) | ![](SOFTWARE/animations/party_beat_meter_40_rainbow.gif) [MP4](SOFTWARE/animations/party_beat_meter_40_rainbow.mp4) |
 
+## ADJ1 Ring-Size Feedback
+
+Turning ADJ1 while the pack is off confirms the selected cyclotron size on the ring (firmware v1.2.0 and later). Each setting has an unmistakable look, so the setting reads correctly even on rings with fewer physical LEDs than the selected count. Firmware prior to v1.2.0 showed the scrolling rainbow at every setting.
+
+| 4 LEDs — solid red | 24 LEDs — solid green | 32 LEDs — solid blue | 40 LEDs — scrolling rainbow |
+| --- | --- | --- | --- |
+| ![](SOFTWARE/animations/ring_size_feedback_4_red.gif) [MP4](SOFTWARE/animations/ring_size_feedback_4_red.mp4) | ![](SOFTWARE/animations/ring_size_feedback_24_green.gif) [MP4](SOFTWARE/animations/ring_size_feedback_24_green.mp4) | ![](SOFTWARE/animations/ring_size_feedback_32_blue.gif) [MP4](SOFTWARE/animations/ring_size_feedback_32_blue.mp4) | ![](SOFTWARE/animations/ring_size_feedback_40_rainbow.gif) [MP4](SOFTWARE/animations/ring_size_feedback_40_rainbow.mp4) |
+
 To regenerate the previews locally:
 
 ```

@@ -63,7 +63,7 @@ and optional effects:
 | **PS_OVERHEAT** | Heating effects have triggered an overheat. |
 | **PS_OVERHEAT_BEEP** | Cooling period with warning beeps. |
 | **PS_AUTOVENT** | Automatic vent sequence once the pack has overheated. |
-| **PS_FEEDBACK** | Brief rainbow on the cyclotron ring confirming an ADJ1 ring-size change while the pack is off. |
+| **PS_FEEDBACK** | Brief confirmation on the cyclotron ring when ADJ1 changes while the pack is off: solid red = 4 LEDs, solid green = 24, solid blue = 32, scrolling rainbow = 40. |
 
 ### Modules
 - `pack_config.cpp` holds the static configuration tables (colors, sounds, heat).
@@ -147,7 +147,13 @@ For a complete gallery grouped by light type, LED count, and mode, see
 - **ADJ0** – sets the powercell animation speed. The cyclotron ring runs at
   a fixed rate (Afterlife packs ramp it during startup, firing and
   cooldown).
-- **ADJ1** – selects the number of cyclotron LEDs.
+- **ADJ1** – selects the number of cyclotron LEDs. Turning it while the pack
+  is off shows a confirmation on the ring: **solid red = 4**, **solid
+  green = 24**, **solid blue = 32**, **scrolling rainbow = 40** — so a ring
+  with only 4 physical LEDs still shows unambiguously which setting is
+  selected (any color other than solid red means keep turning). Firmware
+  prior to v1.2.0 showed the scrolling rainbow at every setting, which was
+  easy to misread as "confirmed" on smaller rings.
 
 ## Test mode
 To enter test mode, set all CONFIG dip switches to **ON** and hold both the
