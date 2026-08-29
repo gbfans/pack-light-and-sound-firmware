@@ -146,7 +146,7 @@ static void finish_fire_cooldown(void) {
     sound_stop();
     hum_monitor();
     AnimationConfig config;
-    config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+    config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
     config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
     config.leds = g_powercell_leds;
     config.num_leds = NUM_LEDS_POWERCELL;
@@ -217,9 +217,6 @@ void pack_state_process(void) {
                 fill_solid(g_future_leds, NUM_LEDS_FUTURE, CRGB::Black);
             }
             ring_monitor();
-            if (!STANDALONE_USE) {
-                pack_state_set_mode(PACK_MODE_PROTON_STREAM);
-            }
         } else {
             ring_monitor();
         }

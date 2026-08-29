@@ -7,7 +7,7 @@
 
 // --- Helper functions for cyclotron-specific animations ---
 // These are still needed for RotateAnimation and SlimeAnimation
-extern const uint8_t cyc_classic_pos[4][5];
+extern const uint8_t cyc_classic_pos[4][4];
 extern volatile uint8_t cyclotron_color_set_size;
 extern volatile CRGB cyclotron_color_set[5];
 
@@ -158,37 +158,6 @@ void SlimeAnimation::update(uint32_t dt) {
 }
 bool SlimeAnimation::isDone() { return false; }
 
-void CylonFadeOutAnimation::start(const AnimationConfig& config) {
-    Animation::start(config);
-    this->pos_accum = 0;
-    this->fade_value = 0;
-    this->seq_num = 0;
-    this->done = false;
-    this->time_since_last_update = 0;
-}
-
-void CylonFadeOutAnimation::update(uint32_t dt) {
-    Animation::update(dt);
-    if (done) return;
-    uint32_t delta = this->speed_ramp.getValue();
-    pos_accum += (delta * dt) / 16;
-    if (pos_accum >= (1 << 14)) {
-        config.leds[seq_num % config.num_leds] = CRGB::Black;
-        seq_num = (seq_num + (pos_accum >> 14)) % config.num_leds;
-        pos_accum &= 0x3FFF;
-    }
-    CRGB base = this->color_ramp.getValue();
-    base.nscale8(255 - (fade_value >> 8));
-    config.leds[seq_num % config.num_leds] = base;
-    uint32_t new_fade = (uint32_t)fade_value + this->config.fade_amount;
-    fade_value = (new_fade > 65535) ? 65535 : (uint16_t)new_fade;
-    if (fade_value >= 65535) {
-        done = true;
-        fill_solid(config.leds, config.num_leds, CRGB::Black);
-    }
-}
-bool CylonFadeOutAnimation::isDone() { return done; }
-
 void ScrollAnimation::start(const AnimationConfig& config) {
     Animation::start(config);
     fill_solid(config.leds, config.num_leds, CRGB::Black);
@@ -208,28 +177,6 @@ void ScrollAnimation::update(uint32_t dt) {
     }
 }
 bool ScrollAnimation::isDone() { return false; }
-
-void FillAnimation::start(const AnimationConfig& config) {
-    Animation::start(config);
-    fill_solid(config.leds, config.num_leds, CRGB::Black);
-    this->seq_num = 0;
-    this->done = false;
-    this->time_since_last_update = 0;
-}
-
-void FillAnimation::update(uint32_t dt) {
-    Animation::update(dt);
-    if (done) return;
-    uint16_t step_time_ms = this->speed_ramp.getValue() / config.num_leds;
-    time_since_last_update += dt;
-    if (time_since_last_update >= step_time_ms) {
-        time_since_last_update = 0;
-        config.leds[seq_num] = this->color_ramp.getValue();
-        seq_num++;
-        if (seq_num >= config.num_leds) done = true;
-    }
-}
-bool FillAnimation::isDone() { return done; }
 
 void DrainAnimation::start(const AnimationConfig& config) {
     Animation::start(config);

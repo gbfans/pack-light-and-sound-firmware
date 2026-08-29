@@ -140,8 +140,6 @@ void song_monitor(void) {
  */
 void sound_start_safely(uint8_t sound_index) {
   song &= 0x7F; // Clear the song playing flag
-  // Ensure any LED DMA transfers have completed to avoid contention when
-  // communicating with the sound module.
   if (sound_is_playing()) {
     sound_stop();
     absolute_time_t start = get_absolute_time();
@@ -311,19 +309,17 @@ void adj_monitor(void) {
   // speed multiplier on Afterlife packs (applied in pack_state_process());
   // the old write here used the multiplier in the opposite sense of that
   // authority and the two fought over the same animation.
-  uint16_t pc_speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, heating_effect, false);
+  uint16_t pc_speed = adj_to_ms_cycle(ADJ_SPEED_POT, heating_effect, false);
   update_animation_speed(g_powercell_controller, pc_speed, last_pc_speed);
 }
 
 /**
  * @brief Perform a major mode change with coordinated sounds and lights.
  *
- * @param cyclotron_pattern_base Base cyclotron pattern index.
  * @param first_sound Sound to play during drain.
  * @param second_sound Optional sound to play with fade-in.
  */
-void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
-                       uint8_t second_sound) {
+void mode_change_major(uint8_t first_sound, uint8_t second_sound) {
   const bool afterlife_std = (config_pack_type() == PACK_TYPE_AFTERLIFE);
   const bool afterlife_tvg = (config_pack_type() == PACK_TYPE_AFTER_TVG);
   const bool afterlife_variant = afterlife_std || afterlife_tvg;
@@ -369,7 +365,7 @@ void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
   pc_normal_config.num_leds = NUM_LEDS_POWERCELL;
   pc_normal_config.color =
       CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
-  pc_normal_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+  pc_normal_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
   g_powercell_controller.play(std::make_unique<ScrollAnimation>(),
                               pc_normal_config);
 
@@ -413,7 +409,7 @@ void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
     cy_base_config.num_leds = g_cyclotron_led_count;
     cy_base_config.color =
         CRGB(cyclotron_color.r, cyclotron_color.g, cyclotron_color.b);
-    cy_base_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, true);
+    cy_base_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, true);
     cy_base_config.clockwise = (config_cyclotron_dir() == 0);
     if (config_pack_type() == PACK_TYPE_FADE_RED ||
         config_pack_type() == PACK_TYPE_TVG_FADE) {
@@ -457,7 +453,7 @@ void mode_monitor(void) {
       break;
     case PACK_MODE_BOSON_DART:
       pack_ctx.mode = next;
-      mode_change_major(7, 23, 0);
+      mode_change_major(23, 0);
       break;
     case PACK_MODE_SLIME_BLOWER:
       pack_state_set_mode(next);
@@ -465,7 +461,7 @@ void mode_monitor(void) {
       break;
     case PACK_MODE_SLIME_TETHER:
       pack_ctx.mode = next;
-      mode_change_major(5, 24, 32);
+      mode_change_major(24, 32);
       break;
     case PACK_MODE_STASIS_STREAM:
       pack_state_set_mode(next);
@@ -473,7 +469,7 @@ void mode_monitor(void) {
       break;
     case PACK_MODE_SHOCK_BLAST:
       pack_ctx.mode = next;
-      mode_change_major(5, 33, 42);
+      mode_change_major(33, 42);
       break;
     case PACK_MODE_OVERLOAD_PULSE:
       pack_state_set_mode(next);
@@ -481,7 +477,7 @@ void mode_monitor(void) {
       break;
     default:
       pack_ctx.mode = PACK_MODE_PROTON_STREAM;
-      mode_change_major(5, 43, 0);
+      mode_change_major(43, 0);
       break;
     }
     cool_the_pack();
@@ -544,7 +540,7 @@ void full_vent(void) {
   pc_normal_config.num_leds = NUM_LEDS_POWERCELL;
   pc_normal_config.color =
       CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
-  pc_normal_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+  pc_normal_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
   g_powercell_controller.play(std::make_unique<ScrollAnimation>(),
                               pc_normal_config);
 
@@ -562,7 +558,7 @@ void full_vent(void) {
     cy_config.num_leds = g_cyclotron_led_count;
     cy_config.color =
         CRGB(cyclotron_color.r, cyclotron_color.g, cyclotron_color.b);
-    cy_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, true);
+    cy_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, true);
     cy_config.clockwise = (config_cyclotron_dir() == 0);
     g_cyclotron_controller.play(std::make_unique<RotateAnimation>(), cy_config);
   }

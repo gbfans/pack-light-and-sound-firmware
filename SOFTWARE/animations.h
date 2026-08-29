@@ -92,19 +92,6 @@ private:
     uint16_t step_time_ms = 0;
 };
 
-class CylonFadeOutAnimation : public Animation {
-public:
-    void start(const AnimationConfig& config) override;
-    void update(uint32_t dt) override;
-    bool isDone() override;
-private:
-    uint16_t pos_accum = 0;
-    uint16_t fade_value = 0;
-    uint8_t seq_num = 0;
-    bool done = false;
-    uint32_t time_since_last_update = 0;
-};
-
 class ScrollAnimation : public Animation {
 public:
     void start(const AnimationConfig& config) override;
@@ -112,18 +99,6 @@ public:
     bool isDone() override;
 private:
     uint8_t seq_num = 0;
-    uint32_t time_since_last_update = 0;
-    uint16_t step_time_ms = 0;
-};
-
-class FillAnimation : public Animation {
-public:
-    void start(const AnimationConfig& config) override;
-    void update(uint32_t dt) override;
-    bool isDone() override;
-private:
-    uint8_t seq_num = 0;
-    bool done = false;
     uint32_t time_since_last_update = 0;
     uint16_t step_time_ms = 0;
 };

@@ -19,7 +19,8 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 
-#define PC_SPEED_DEFAULT 0
+/** ADC channel of the speed potentiometer (ADJ0) for adj_to_ms_cycle(). */
+#define ADJ_SPEED_POT 0
 
 /** @brief Global state for song playback; MSB is set when a song is playing. */
 extern volatile uint8_t song;

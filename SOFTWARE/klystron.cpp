@@ -56,10 +56,8 @@ bool pack_timer_isr(struct repeating_timer *t) {
     check_dip_switches_isr();
     check_user_switches_isr();
 
-    // Ensure any LEDs above the active count remain dark before animations run.
-    // mask_cyclotron_leds();
-
-    // Advance animation patterns
+    // Advance animation patterns. show_leds() below masks any cyclotron LEDs
+    // above the active count before the strips are updated.
     g_powercell_controller.update(pack_isr_interval_ms);
     g_cyclotron_controller.update(pack_isr_interval_ms);
     g_future_controller.update(pack_isr_interval_ms);
@@ -99,8 +97,6 @@ void init_pack_timer(void) {
  * @return 0 on successful execution (though it should never return).
  */
 int main(void) {
-    static bool board_test_done = false;
-
     // Hardware and software initializations
     init_gpio();
     init_adc();
@@ -121,10 +117,9 @@ int main(void) {
     sound_startup();
     
     // Check for board test mode entry condition on initial power-up
-    if ( !board_test_done && (config_dip_sw == (DIP_PACKSEL_MASK | DIP_HEAT_MASK | DIP_MONSTER_MASK | DIP_HUM_MASK )) && fire_sw() && song_sw() ) {
+    if ( (config_dip_sw == (DIP_PACKSEL_MASK | DIP_HEAT_MASK | DIP_MONSTER_MASK | DIP_HUM_MASK )) && fire_sw() && song_sw() ) {
         board_test();
         clear_song_toggle(); // Clear the song toggle flag that gets set during testing
-        board_test_done = true;
     }
 
     // Initialize the main state machine

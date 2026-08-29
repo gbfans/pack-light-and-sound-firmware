@@ -72,14 +72,14 @@ void pack_combo_startup(void) {
         sound_start_safely(10);
         {
             AnimationConfig pc_config;
-            pc_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+            pc_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
             pc_config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
             pc_config.leds = g_powercell_leds;
             pc_config.num_leds = NUM_LEDS_POWERCELL;
             g_powercell_controller.play(std::make_unique<ScrollAnimation>(), pc_config);
 
             AnimationConfig cy_config;
-            cy_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, true);
+            cy_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, true);
             cy_config.color = CRGB(cyclotron_color.r, cyclotron_color.g, cyclotron_color.b);
             cy_config.clockwise = (config_cyclotron_dir() == 0);
             cy_config.leds = g_cyclotron_leds;
@@ -108,14 +108,14 @@ void pack_combo_startup(void) {
         wait_for_animations_or_user();
         {
             AnimationConfig pc_config;
-            pc_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+            pc_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
             pc_config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
             pc_config.leds = g_powercell_leds;
             pc_config.num_leds = NUM_LEDS_POWERCELL;
             g_powercell_controller.play(std::make_unique<ScrollAnimation>(), pc_config);
 
             AnimationConfig cy_config;
-            cy_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, true);
+            cy_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, true);
             cy_config.color = CRGB(cyclotron_color.r, cyclotron_color.g, cyclotron_color.b);
             cy_config.clockwise = (config_cyclotron_dir() == 0);
             cy_config.leds = g_cyclotron_leds;
@@ -145,14 +145,14 @@ void pack_combo_startup(void) {
         wait_for_animations_or_user();
         {
             AnimationConfig pc_config;
-            pc_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+            pc_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
             pc_config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
             pc_config.leds = g_powercell_leds;
             pc_config.num_leds = NUM_LEDS_POWERCELL;
             g_powercell_controller.play(std::make_unique<ScrollAnimation>(), pc_config);
 
             AnimationConfig cy_config;
-            cy_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, true);
+            cy_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, true);
             cy_config.color = CRGB(cyclotron_color.r, cyclotron_color.g, cyclotron_color.b);
             cy_config.clockwise = (config_cyclotron_dir() == 0);
             cy_config.leds = g_cyclotron_leds;
@@ -205,7 +205,7 @@ void pack_combo_startup(void) {
 
         {
             AnimationConfig pc_config;
-            pc_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+            pc_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
             pc_config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
             pc_config.leds = g_powercell_leds;
             pc_config.num_leds = NUM_LEDS_POWERCELL;
@@ -331,9 +331,6 @@ void pack_combo_powerdown(void) {
             break;
         case CY_PATTERN_FADE_OUT:
             g_cyclotron_controller.play(std::make_unique<FadeAnimation>(true), cy_config);
-            break;
-        case CY_PATTERN_RING_FADE_OUT:
-            g_cyclotron_controller.play(std::make_unique<CylonFadeOutAnimation>(), cy_config);
             break;
         }
     }
