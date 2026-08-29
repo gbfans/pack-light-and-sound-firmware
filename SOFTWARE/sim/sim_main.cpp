@@ -236,8 +236,8 @@ static void run_cyclotron(const Sequencer& seq, int n, int frames) {
 }
 
 static void run_future(const Sequencer& seq, int frames) {
-  // The N-Filter strip lights while the pack fires (pack_state.cpp
-  // future_firing_start/stop): dark, firing pattern, dark again.
+  // The N-Filter strip is the vent light (full_vent() in monitors.cpp):
+  // dark, vent pattern for the sequence, dark again.
   int phase = 0;
   for (int i = 0; i < frames; ++i) {
     if (phase == 0 && g_sim_millis >= 500) {

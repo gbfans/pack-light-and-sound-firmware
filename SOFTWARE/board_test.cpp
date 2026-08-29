@@ -173,13 +173,16 @@ void board_test(void) {
   sound_wait_til_end(false, false);
   sound_start(0x2A);
   sound_wait_til_end(false, false);
-  for (int i = 0; i < 30; i++) {
-    vent_light_on(true);
+  // Three deliberate one-second holds: the tester can hear the relay click
+  // and see the mirror pixel, without rapid-cycling a connected smoke
+  // machine the way the old 50/120 ms lamp strobe did.
+  for (int i = 0; i < 3; i++) {
+    vent_relay_on(true);
     g_powercell_leds[8] = powercell_color;
-    sleep_ms(50);
-    vent_light_on(false);
-    g_powercell_leds[8] = powercell_color;
-    sleep_ms(120);
+    sleep_ms(1000);
+    vent_relay_on(false);
+    g_powercell_leds[8] = CRGB::Black;
+    sleep_ms(1000);
   }
   sound_start(0x2B);
   sound_wait_til_end(false, false);

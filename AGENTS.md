@@ -38,7 +38,7 @@ This matrix must be fully tested and passed before submitting changes. `N` refer
 | **Party Mode** | For each N in {4,24,32,40} | All N LEDs participate in party patterns. Remainder off. |
 | **AFTERLIFE Mode**| For each N in {4,24,32,40} | All N LEDs participate in AFTERLIFE animation. Remainder off. |
 | **Powercell** | Normal Operation | Powercell light scrolls from bottom to top endlessly. Does not stall. |
-| **Future Light** | Firing the wand | N-Filter light activates only during firing states. |
+| **Future Light** | Venting | N-Filter strip animates only during vent sequences; the vent relay output is held on for the same duration. |
 | **TVG Lights** | Normal Operation | TVG patterns run as documented. Remainder LEDs are off. |
 | **TVG Fire Timing** | Wand lights attached, ear tap (100 ms pulse) | Weapon mode changes. Nothing fires, and the wand stays in step with the pack. |
 | | Wand lights attached, quick fire tap (180 ms pulse) | Short burst of firing. Mode does **not** change. |

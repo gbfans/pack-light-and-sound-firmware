@@ -34,7 +34,7 @@ The number of active LEDs in the cyclotron ring (`N`) is determined by the `ADJ1
 ## Features
 - **Adjustable Cyclotron Ring (N)**: The `ADJ1` potentiometer actively controls the number of logical LEDs in the cyclotron ring. Allowed values are 4, 24, 32, and 40. All animations and modes respect this setting, and any LEDs beyond the selected count (`N`) are always forced off.
 - **Powercell Endless Scroll**: The powercell light bar now scrolls from bottom to top in a continuous, endless loop during normal operation.
-- **N-Filter Firing Light**: The "Future" light (the 16 LEDs on the N-Filter) is tied to the pack's firing state: it strobes (or, on Afterlife packs, rotates) while the wand fires and turns off the moment firing stops. Vent sequences use the dedicated vent light output instead.
+- **N-Filter Vent Light**: The "Future" light (the 16 LEDs on the N-Filter) is the vent light: it strobes (or, on Afterlife packs, rotates) for the duration of a vent sequence. At the same time the vent relay output (GPIO 28, the RELAY connector) is held on so smoke machines and other vent effects trigger cleanly.
 - **Party Mode**: Activate party mode by starting a song with the song switch, then tapping the fire button while the pack is off. This will cycle through several fun animations that use all `N` cyclotron LEDs.
 - Power‑up sequences can be interrupted with a power‑down or fire event.
 - Additional sound files, including mono versions for single‑speaker

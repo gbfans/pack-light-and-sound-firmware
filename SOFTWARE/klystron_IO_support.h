@@ -24,7 +24,9 @@ extern "C" {
 // === GPIO assignments ===
 static const uint GPI_FIRE = 15;
 static const uint GPO_NBUSY_TO_WAND = 12;
-static const uint GPO_VENT_LIGHT = 28;
+/** @brief RELAY output. Held on during vent sequences (smoke machines,
+ *         legacy relay/timer boards, or a plain vent lamp). */
+static const uint GPO_VENT_RELAY = 28;
 static const uint GPO_MUTE = 22;
 
 // === DIP switch masks ===
@@ -104,7 +106,7 @@ void clear_pack_pu_req(void);
 
 // --- Direct GPIO control ---
 void nsignal_to_wandlights(bool autovent);
-void vent_light_on(bool turn_on);
+void vent_relay_on(bool turn_on);
 void mute_audio(void);
 void unmute_audio(void);
 

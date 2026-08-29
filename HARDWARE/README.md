@@ -67,7 +67,11 @@ or existing light‑kit signals, can be connected without extra hardware.
 
 ## Other Outputs
 - **NBUSY to wand lights** – GPIO 12 indicates autovent status.
-- **Vent light** – GPIO 28 drives the vent lamp.
+- **Vent relay** – GPIO 28 drives the RELAY output. It is held on for the
+  duration of a vent sequence to trigger smoke machines or other vent
+  effects; a plain lamp wired here lights steadily during vents. (Legacy
+  relay/timer boards that latch a trigger and run their own delay/duration
+  timing also work from the solid signal.)
 - **Audio mute** – GPIO 22 mutes the external sound board.
 
 ## Firmware

@@ -94,9 +94,9 @@ void init_gpio(void) {
     gpio_init(GPO_NBUSY_TO_WAND);
     gpio_set_dir(GPO_NBUSY_TO_WAND, GPIO_OUT);
     gpio_put(GPO_NBUSY_TO_WAND, 1);
-    gpio_init(GPO_VENT_LIGHT);
-    gpio_set_dir(GPO_VENT_LIGHT, GPIO_OUT);
-    gpio_put(GPO_VENT_LIGHT, 0);
+    gpio_init(GPO_VENT_RELAY);
+    gpio_set_dir(GPO_VENT_RELAY, GPIO_OUT);
+    gpio_put(GPO_VENT_RELAY, 0);
     gpio_init(GPO_MUTE);
     gpio_put(GPO_MUTE, 1);
     gpio_set_dir(GPO_MUTE, GPIO_OUT);
@@ -368,8 +368,8 @@ void clear_pack_pu_req(void) {
 void nsignal_to_wandlights(bool autovent) {
     gpio_put(GPO_NBUSY_TO_WAND, autovent ? 0 : 1);
 }
-void vent_light_on(bool turn_on) {
-    gpio_put(GPO_VENT_LIGHT, turn_on ? 1 : 0);
+void vent_relay_on(bool turn_on) {
+    gpio_put(GPO_VENT_RELAY, turn_on ? 1 : 0);
 }
 void mute_audio(void) { gpio_put(GPO_MUTE, 1); }
 void unmute_audio(void) { gpio_put(GPO_MUTE, 0); }

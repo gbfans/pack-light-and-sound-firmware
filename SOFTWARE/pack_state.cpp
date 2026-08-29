@@ -109,36 +109,6 @@ static void afterlife_fire_rampup(void) {
 }
 
 /**
- * @brief Lights the N-Filter ("future") strip for the duration of firing.
- * @details Afterlife packs run the rotating four-on pattern; every other
- *          pack type strobes the strip in the mode's future color. The
- *          N-Filter is tied to the firing states only - the vent sequence
- *          uses the dedicated vent light output, not this strip.
- */
-static void future_firing_start(void) {
-    AnimationConfig fr_config;
-    fr_config.leds = g_future_leds;
-    fr_config.num_leds = NUM_LEDS_FUTURE;
-    fr_config.color = CRGB(future_color.r, future_color.g, future_color.b);
-    if (config_pack_type() == PACK_TYPE_AFTERLIFE ||
-        config_pack_type() == PACK_TYPE_AFTER_TVG) {
-        fr_config.speed = 600;
-        fr_config.clockwise = false;
-        g_future_controller.play(std::make_unique<ShiftRotateAnimation>(),
-                                 fr_config);
-    } else {
-        fr_config.speed = 150;
-        g_future_controller.play(std::make_unique<StrobeAnimation>(), fr_config);
-    }
-}
-
-/** @brief Turns the N-Filter strip off when a firing state ends. */
-static void future_firing_stop(void) {
-    g_future_controller.stop();
-    fill_solid(g_future_leds, NUM_LEDS_FUTURE, CRGB::Black);
-}
-
-/**
  * @brief Ends the Afterlife cooldown: silence the tail, restore idle sounds
  *        and the powercell scroll, and drop back to PS_IDLE.
  */
@@ -326,7 +296,6 @@ void pack_state_process(void) {
                                  : PS_FIRE;
             pack_state_set_state(next);
             monster_fire();
-            future_firing_start();
             fire_department(0);
             if ((config_pack_type() == PACK_TYPE_AFTERLIFE ||
                  config_pack_type() == PACK_TYPE_AFTER_TVG) &&
@@ -351,7 +320,6 @@ void pack_state_process(void) {
         if (!song_is_playing() && fire_sw()) {
             pack_state_set_state(PS_FIRE);
             monster_fire();
-            future_firing_start();
             fire_department(0);
             afterlife_fire_rampup();
         } else if (!song_is_playing() && !pu_sw()) {
@@ -375,7 +343,6 @@ void pack_state_process(void) {
         if (!fire_sw()) {
             pack_state_set_state(PS_IDLE);
             fire_department(1);
-            future_firing_stop();
             clear_fire_tap();
             while (fire_sw()) {
                 sleep_ms(50);
@@ -384,7 +351,6 @@ void pack_state_process(void) {
                    pack_heat_settings[config_pack_type()].start_autovent) {
             pack_state_set_state(PS_IDLE);
             fire_department(3);
-            future_firing_stop();
             sound_wait_til_end(false, false);
             hum_monitor();
             cool_the_pack();
@@ -410,7 +376,6 @@ void pack_state_process(void) {
                 pack_state_set_state(PS_IDLE);
             }
             fire_department(1);
-            future_firing_stop();
             clear_fire_tap();
         } else if (temperature >=
                    pack_heat_settings[config_pack_type()].start_beep) {
@@ -437,7 +402,6 @@ void pack_state_process(void) {
         } else {
             pack_state_set_state(PS_OVERHEAT_BEEP);
             fire_department(3);
-            future_firing_stop();
             sound_wait_til_end(false, false);
             clear_fire_tap();
         }
@@ -449,7 +413,6 @@ void pack_state_process(void) {
             pack_state_set_state(PS_IDLE);
         } else if (fire_sw()) {
             pack_state_set_state(PS_OVERHEAT);
-            future_firing_start();
             fire_department(0);
             fire_department(2);
             clear_fire_tap();
@@ -459,7 +422,6 @@ void pack_state_process(void) {
         adj_monitor();
         break;
     case PS_AUTOVENT: {
-        future_firing_stop();
         AnimationConfig pc_config;
         pc_config.speed = AUTOVENT_MS_CYCLE;
         pc_config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);

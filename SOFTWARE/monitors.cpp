@@ -503,8 +503,23 @@ void full_vent(void) {
   const bool is_afterlife_pack =
       (pack_type == PACK_TYPE_AFTERLIFE) || (pack_type == PACK_TYPE_AFTER_TVG);
 
-  // The N-Filter strip belongs to the firing states; venting signals with
-  // the dedicated vent light output (strobed in the loop below) instead.
+  // The N-Filter ("future") strip is the vent light: a strobe on classic and
+  // TVG packs, the rotating four-on pattern on Afterlife.
+  AnimationConfig fr_config;
+  fr_config.leds = g_future_leds;
+  fr_config.num_leds = NUM_LEDS_FUTURE;
+  fr_config.color = CRGB(future_color.r, future_color.g, future_color.b);
+
+  if (is_afterlife_pack) {
+    fr_config.speed = 600;
+    fr_config.clockwise = false;
+    g_future_controller.play(std::make_unique<ShiftRotateAnimation>(),
+                             fr_config);
+  } else {
+    fr_config.speed = 150;
+    g_future_controller.play(std::make_unique<StrobeAnimation>(), fr_config);
+  }
+
   AnimationConfig pc_drain_config;
   pc_drain_config.leds = g_powercell_leds;
   pc_drain_config.num_leds = NUM_LEDS_POWERCELL;
@@ -524,15 +539,20 @@ void full_vent(void) {
     g_cyclotron_controller.play(std::make_unique<FadeAnimation>(true),
                                 cy_config);
   }
+  // Hold the relay output on for the whole vent. The RELAY connector drives
+  // smoke machines (or legacy trigger boards with their own delay/duration
+  // timing); the original firmware's 50/120 ms lamp strobe rapid-cycled
+  // those loads. A plain lamp wired here now lights steadily instead.
+  vent_relay_on(true);
   do {
     pack_animations_reap();
-    vent_light_on(true);
-    sleep_ms(50);
-    vent_light_on(false);
-    sleep_ms(120);
+    sleep_ms(20);
   } while (vent_sw() || sound_is_playing());
+  vent_relay_on(false);
 
   // Stop all animations that were started for the vent sequence.
+  g_future_controller.stop();
+  fill_solid(g_future_leds, NUM_LEDS_FUTURE, CRGB::Black);
   g_powercell_controller.stop();
   if (!is_afterlife_pack) {
     g_cyclotron_controller.stop();

@@ -1,11 +1,11 @@
 # Animation Gallery
 
-These previews are rendered by the simulator in [`SOFTWARE/sim`](SOFTWARE/sim), which compiles the firmware's own animation sources (`animations.cpp`, `party_sequences.cpp`, the RAMP library) and drives them with the same play/stop sequencing the pack state machine uses - what the GIFs show is what the firmware does. Each pack-mode clip runs the complete power-up, idle, and shut-down sequence; the N-Filter column shows the firing light, which is active only while the pack fires (venting uses the dedicated vent light output instead). Each GIF links to a corresponding MP4 recording.
+These previews are rendered by the simulator in [`SOFTWARE/sim`](SOFTWARE/sim), which compiles the firmware's own animation sources (`animations.cpp`, `party_sequences.cpp`, the RAMP library) and drives them with the same play/stop sequencing the pack state machine uses - what the GIFs show is what the firmware does. Each pack-mode clip runs the complete power-up, idle, and shut-down sequence; the N-Filter column shows the vent light, which animates only during vent sequences (the vent relay output is held on at the same time for smoke effects). Each GIF links to a corresponding MP4 recording.
 
 ## Movie / Snap Mode (GB1/GB2)
 DIP1 – OFF, DIP2 – OFF, DIP3 – OFF
 
-| Cyclotron LEDs | Powercell (15) | Cyclotron | N-Filter (16, firing light) |
+| Cyclotron LEDs | Powercell (15) | Cyclotron | N-Filter (16, vent light) |
 | --- | --- | --- | --- |
 | 4 | ![](SOFTWARE/animations/movie_powercell_sequence_15_blue.gif) [MP4](SOFTWARE/animations/movie_powercell_sequence_15_blue.mp4) | ![](SOFTWARE/animations/movie_cyclotron_sequence_4_red.gif) [MP4](SOFTWARE/animations/movie_cyclotron_sequence_4_red.mp4) | ![](SOFTWARE/animations/movie_future_sequence_16_white.gif) [MP4](SOFTWARE/animations/movie_future_sequence_16_white.mp4) |
 | 24 | ![](SOFTWARE/animations/movie_powercell_sequence_15_blue.gif) [MP4](SOFTWARE/animations/movie_powercell_sequence_15_blue.mp4) | ![](SOFTWARE/animations/movie_cyclotron_sequence_24_red.gif) [MP4](SOFTWARE/animations/movie_cyclotron_sequence_24_red.mp4) | ![](SOFTWARE/animations/movie_future_sequence_16_white.gif) [MP4](SOFTWARE/animations/movie_future_sequence_16_white.mp4) |
@@ -15,7 +15,7 @@ DIP1 – OFF, DIP2 – OFF, DIP3 – OFF
 ## Video Game / Fade Mode
 DIP1 – ON, DIP2 – OFF, DIP3 – OFF
 
-| Cyclotron LEDs | Powercell (15) | Cyclotron | N-Filter (16, firing light) |
+| Cyclotron LEDs | Powercell (15) | Cyclotron | N-Filter (16, vent light) |
 | --- | --- | --- | --- |
 | 4 | ![](SOFTWARE/animations/video_game_powercell_sequence_15_blue.gif) [MP4](SOFTWARE/animations/video_game_powercell_sequence_15_blue.mp4) | ![](SOFTWARE/animations/video_game_cyclotron_sequence_4_red.gif) [MP4](SOFTWARE/animations/video_game_cyclotron_sequence_4_red.mp4) | ![](SOFTWARE/animations/video_game_future_sequence_16_white.gif) [MP4](SOFTWARE/animations/video_game_future_sequence_16_white.mp4) |
 | 24 | ![](SOFTWARE/animations/video_game_powercell_sequence_15_blue.gif) [MP4](SOFTWARE/animations/video_game_powercell_sequence_15_blue.mp4) | ![](SOFTWARE/animations/video_game_cyclotron_sequence_24_red.gif) [MP4](SOFTWARE/animations/video_game_cyclotron_sequence_24_red.mp4) | ![](SOFTWARE/animations/video_game_future_sequence_16_white.gif) [MP4](SOFTWARE/animations/video_game_future_sequence_16_white.mp4) |
@@ -25,7 +25,7 @@ DIP1 – ON, DIP2 – OFF, DIP3 – OFF
 ## TVG Mode
 DIP1 – OFF, DIP2 – ON, DIP3 – OFF
 
-| Cyclotron LEDs | Powercell (15) | Cyclotron | N-Filter (16, firing light) |
+| Cyclotron LEDs | Powercell (15) | Cyclotron | N-Filter (16, vent light) |
 | --- | --- | --- | --- |
 | 4 | ![](SOFTWARE/animations/tvg_powercell_sequence_15_blue.gif) [MP4](SOFTWARE/animations/tvg_powercell_sequence_15_blue.mp4) | ![](SOFTWARE/animations/tvg_cyclotron_sequence_4_red.gif) [MP4](SOFTWARE/animations/tvg_cyclotron_sequence_4_red.mp4) | ![](SOFTWARE/animations/tvg_future_sequence_16_white.gif) [MP4](SOFTWARE/animations/tvg_future_sequence_16_white.mp4) |
 | 24 | ![](SOFTWARE/animations/tvg_powercell_sequence_15_blue.gif) [MP4](SOFTWARE/animations/tvg_powercell_sequence_15_blue.mp4) | ![](SOFTWARE/animations/tvg_cyclotron_sequence_24_red.gif) [MP4](SOFTWARE/animations/tvg_cyclotron_sequence_24_red.mp4) | ![](SOFTWARE/animations/tvg_future_sequence_16_white.gif) [MP4](SOFTWARE/animations/tvg_future_sequence_16_white.mp4) |
@@ -35,7 +35,7 @@ DIP1 – OFF, DIP2 – ON, DIP3 – OFF
 ## Afterlife Mode
 DIP1 – ON, DIP2 – ON, DIP3 – OFF
 
-| Cyclotron LEDs | Powercell (15) | Cyclotron | N-Filter (16, firing light) |
+| Cyclotron LEDs | Powercell (15) | Cyclotron | N-Filter (16, vent light) |
 | --- | --- | --- | --- |
 | 4 | ![](SOFTWARE/animations/afterlife_powercell_sequence_15_blue.gif) [MP4](SOFTWARE/animations/afterlife_powercell_sequence_15_blue.mp4) | ![](SOFTWARE/animations/afterlife_cyclotron_sequence_4_red.gif) [MP4](SOFTWARE/animations/afterlife_cyclotron_sequence_4_red.mp4) | ![](SOFTWARE/animations/afterlife_future_sequence_16_white.gif) [MP4](SOFTWARE/animations/afterlife_future_sequence_16_white.mp4) |
 | 24 | ![](SOFTWARE/animations/afterlife_powercell_sequence_15_blue.gif) [MP4](SOFTWARE/animations/afterlife_powercell_sequence_15_blue.mp4) | ![](SOFTWARE/animations/afterlife_cyclotron_sequence_24_red.gif) [MP4](SOFTWARE/animations/afterlife_cyclotron_sequence_24_red.mp4) | ![](SOFTWARE/animations/afterlife_future_sequence_16_white.gif) [MP4](SOFTWARE/animations/afterlife_future_sequence_16_white.mp4) |

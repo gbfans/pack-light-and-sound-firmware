@@ -3,7 +3,11 @@
 > **Resolution status (2026-08-29):** every finding below has been addressed on
 > this branch, in the commits following the audit report:
 >
-> - **A1** — N-Filter firing light implemented; vent no longer drives the strip.
+> - **A1** — resolved as a documentation error, per the maintainer: the
+>   N-Filter strip is the vent light (as the original firmware had it), so the
+>   vent animation is restored, the orphaned fire-end stop calls are gone, and
+>   the firing-light description in README/AGENTS is corrected. GPIO 28 is
+>   renamed to the vent relay it drives and held solid during vents (issue #10).
 > - **A2 + C4** — conditional tap clearing and interrupt-masked flag clears.
 > - **A3** — the speed multiplier is now the single cyclotron authority, applied
 >   only on Afterlife packs outside party mode; `adj_monitor` and
