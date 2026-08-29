@@ -502,21 +502,9 @@ void full_vent(void) {
   const PackType pack_type = config_pack_type();
   const bool is_afterlife_pack =
       (pack_type == PACK_TYPE_AFTERLIFE) || (pack_type == PACK_TYPE_AFTER_TVG);
-  AnimationConfig fr_config;
-  fr_config.leds = g_future_leds;
-  fr_config.num_leds = NUM_LEDS_FUTURE;
-  fr_config.color = CRGB(future_color.r, future_color.g, future_color.b);
 
-  if (is_afterlife_pack) {
-    fr_config.speed = 600;
-    fr_config.clockwise = false;
-    g_future_controller.play(std::make_unique<ShiftRotateAnimation>(),
-                             fr_config);
-  } else {
-    fr_config.speed = 150;
-    g_future_controller.play(std::make_unique<StrobeAnimation>(), fr_config);
-  }
-
+  // The N-Filter strip belongs to the firing states; venting signals with
+  // the dedicated vent light output (strobed in the loop below) instead.
   AnimationConfig pc_drain_config;
   pc_drain_config.leds = g_powercell_leds;
   pc_drain_config.num_leds = NUM_LEDS_POWERCELL;
@@ -545,8 +533,6 @@ void full_vent(void) {
   } while (vent_sw() || sound_is_playing());
 
   // Stop all animations that were started for the vent sequence.
-  g_future_controller.stop();
-  fill_solid(g_future_leds, NUM_LEDS_FUTURE, CRGB::Black);
   g_powercell_controller.stop();
   if (!is_afterlife_pack) {
     g_cyclotron_controller.stop();
