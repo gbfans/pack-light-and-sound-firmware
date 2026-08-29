@@ -357,6 +357,7 @@ void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
         MODE_CHANGE_TIMEOUT_MS * 1000) {
       break;
     }
+    pack_animations_reap();
     sleep_ms(20);
   }
 
@@ -377,6 +378,7 @@ void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
         MODE_CHANGE_TIMEOUT_MS * 1000) {
       break;
     }
+    pack_animations_reap();
     sleep_ms(20);
   }
 
@@ -398,6 +400,7 @@ void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
             MODE_CHANGE_TIMEOUT_MS * 1000) {
           break;
         }
+        pack_animations_reap();
         sleep_ms(20);
       }
     }
@@ -533,6 +536,7 @@ void full_vent(void) {
                                 cy_config);
   }
   do {
+    pack_animations_reap();
     vent_light_on(true);
     sleep_ms(50);
     vent_light_on(false);

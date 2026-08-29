@@ -38,6 +38,7 @@ static const uint32_t AFTERLIFE_RAMP_START_SPEED_X = 5;
  */
 static void wait_for_animations_or_user() {
     do {
+        pack_animations_reap();
         sleep_ms(20);
         if (!pu_sw() && !pack_pu_sw() && !wand_standby_sw())
             break;
@@ -185,6 +186,7 @@ void pack_combo_startup(void) {
         }
 
         do {
+            pack_animations_reap();
             cy_speed_ramp_update();
             if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
                 uint32_t speed = 1000;
@@ -212,6 +214,7 @@ void pack_combo_startup(void) {
         }
 
         while (sound_is_playing()) {
+            pack_animations_reap();
             cy_speed_ramp_update();
             if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
                 uint32_t speed = 1000;
@@ -256,6 +259,7 @@ static void wait_for_sequence_end(bool afterlife_ring, uint32_t ring_fade_ms) {
     const uint32_t t0 = to_ms_since_boot(get_absolute_time());
     bool ring_running = afterlife_ring;
     do {
+        pack_animations_reap();
         if (afterlife_ring) {
             // Only Afterlife rings run off the speed multiplier; pumping the
             // speed here for other pack types would override the fade

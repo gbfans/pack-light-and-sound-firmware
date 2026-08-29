@@ -105,6 +105,10 @@ int main(void) {
     init_gpio();
     init_adc();
     init_leds();
+    // Push one (all-black) frame before the timer starts: FastLED's RP2040
+    // driver allocates its DMA buffers on the first show, and doing that
+    // here keeps the allocation out of interrupt context for good.
+    show_leds();
     init_pack_timer();
 
     // Set initial cyclotron ring size from the potentiometer

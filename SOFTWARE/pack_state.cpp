@@ -147,7 +147,14 @@ void feedback_request(void) {
  *          evaluates the current state and user inputs to determine and
  *          execute the correct pack behavior.
  */
+void pack_animations_reap(void) {
+    g_powercell_controller.reap();
+    g_cyclotron_controller.reap();
+    g_future_controller.reap();
+}
+
 void pack_state_process(void) {
+    pack_animations_reap();
     song_monitor();
     cy_speed_ramp_update();
     if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
