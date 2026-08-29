@@ -159,7 +159,15 @@ void pack_state_process(void) {
             pack_state_set_state(PS_WAND_STANDBY);
             pack_combo_startup();
         }
-        clear_fire_tap();
+        // Discard stray taps only while no song is playing. During a song,
+        // taps cycle the party animations and are consumed by song_monitor()
+        // at the top of the next pass - clearing here as well would race it:
+        // a tap raised by the ISR after song_monitor() sampled the flag but
+        // before this line would be erased unseen, and that window spans most
+        // of the pass.
+        if (!song_is_playing()) {
+            clear_fire_tap();
+        }
         break;
     case PS_FEEDBACK:
         if (feedback_anim_needs_start) {
