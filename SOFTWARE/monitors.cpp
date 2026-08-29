@@ -305,13 +305,14 @@ void adj_monitor(void) {
   read_adj_potentiometers(true);     // read the ADC and average the samples
 
   static uint16_t last_pc_speed = 0;
-  static uint16_t last_cy_speed = 0;
 
+  // ADJ0 (and the heat effect) drive the powercell only. Cyclotron speed is
+  // fixed at the configured midpoint for classic/TVG packs and follows the
+  // speed multiplier on Afterlife packs (applied in pack_state_process());
+  // the old write here used the multiplier in the opposite sense of that
+  // authority and the two fought over the same animation.
   uint16_t pc_speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, heating_effect, false);
   update_animation_speed(g_powercell_controller, pc_speed, last_pc_speed);
-
-  uint16_t cy_speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, heating_effect, true);
-  update_animation_speed(g_cyclotron_controller, cy_speed, last_cy_speed);
 }
 
 /**

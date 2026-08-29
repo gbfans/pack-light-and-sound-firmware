@@ -157,12 +157,18 @@ void pack_state_process(void) {
     pack_animations_reap();
     song_monitor();
     cy_speed_ramp_update();
-    if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
-        uint32_t speed = 0;
-        if (cy_speed_multiplier > 0) {
-            speed = (1000 * (1 << 16)) / cy_speed_multiplier;
+    // The 16.16 multiplier is the single authority over cyclotron speed,
+    // and it only exists on Afterlife packs (spin-up, fire ramp, cooldown).
+    // Other pack types run at whatever speed their animation was configured
+    // with, and party-mode animations own their speeds outright - blanket
+    // writes here are what used to jam the party Cylon scanner to ~1 s/step
+    // on the ring while the other strips stepped at 40 ms.
+    if ((config_pack_type() == PACK_TYPE_AFTERLIFE ||
+         config_pack_type() == PACK_TYPE_AFTER_TVG) &&
+        !party_mode_is_active() && cy_speed_multiplier > 0) {
+        if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
+            anim->setSpeed((1000 * (1 << 16)) / cy_speed_multiplier, 0);
         }
-        anim->setSpeed(speed, 0);
     }
     if (pack_ctx.state != PS_OFF && party_mode_is_active()) {
         party_mode_stop();
