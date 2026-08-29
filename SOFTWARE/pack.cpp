@@ -252,19 +252,35 @@ void pack_short_powerup_sound(bool afterlife_higher) {
  *          pack shutdown. It uses a predefined sequence from the `pack_powerdown_sequences`
  *          configuration table.
  */
-static void wait_for_sequence_end() {
+static void wait_for_sequence_end(bool afterlife_ring, uint32_t ring_fade_ms) {
+    const uint32_t t0 = to_ms_since_boot(get_absolute_time());
+    bool ring_running = afterlife_ring;
     do {
-        cy_speed_ramp_update();
-        if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
-            uint32_t speed = 1000;
-            if (cy_speed_multiplier > 0) {
-                speed = speed * (1 << 16) / cy_speed_multiplier;
+        if (afterlife_ring) {
+            // Only Afterlife rings run off the speed multiplier; pumping the
+            // speed here for other pack types would override the fade
+            // duration their FadeAnimation was configured with.
+            cy_speed_ramp_update();
+            if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
+                uint32_t speed = 1000;
+                if (cy_speed_multiplier > 0) {
+                    speed = speed * (1 << 16) / cy_speed_multiplier;
+                }
+                anim->setSpeed(speed, 0);
             }
-            anim->setSpeed(speed, 0);
+            if (ring_running &&
+                (to_ms_since_boot(get_absolute_time()) - t0) >= ring_fade_ms) {
+                // The ChangeColorAction has faded the ring to black by now;
+                // retire the animation here in the main loop (this used to be
+                // a CallbackAction firing inside the timer ISR).
+                g_cyclotron_controller.stop();
+                ring_running = false;
+            }
         }
-        show_leds();
         sleep_ms(20);
-    } while (g_powercell_controller.isRunning() || g_cyclotron_controller.isRunning() || sound_is_playing());
+    } while (g_powercell_controller.isRunning() || ring_running ||
+             (!afterlife_ring && g_cyclotron_controller.isRunning()) ||
+             sound_is_playing());
     sleep_ms(10);
 }
 
@@ -299,11 +315,12 @@ void pack_combo_powerdown(void) {
     cy_config.leds = g_cyclotron_leds;
     cy_config.num_leds = g_cyclotron_led_count;
 
-    if (config_pack_type() == PACK_TYPE_AFTERLIFE ||
-        config_pack_type() == PACK_TYPE_AFTER_TVG) {
+    const bool afterlife_ring = (config_pack_type() == PACK_TYPE_AFTERLIFE ||
+                                 config_pack_type() == PACK_TYPE_AFTER_TVG);
+    if (afterlife_ring) {
+        // Fade the ring color to black over the configured duration; the
+        // wait loop below stops the animation once the fade has elapsed.
         g_cyclotron_controller.enqueue(std::make_unique<ChangeColorAction>(CRGB::Black, seq->cy_ms, QUADRATIC_OUT));
-        g_cyclotron_controller.enqueue(std::make_unique<WaitAction>(seq->cy_ms));
-        g_cyclotron_controller.enqueue(std::make_unique<CallbackAction>([]() { g_cyclotron_controller.stop(); }));
     } else {
         switch (seq->cy_pattern) {
         case CY_PATTERN_INSTANT_OFF:
@@ -319,10 +336,9 @@ void pack_combo_powerdown(void) {
         }
     }
 
-    wait_for_sequence_end();
+    wait_for_sequence_end(afterlife_ring, seq->cy_ms);
 
-    if (config_pack_type() == PACK_TYPE_AFTERLIFE ||
-        config_pack_type() == PACK_TYPE_AFTER_TVG) {
+    if (afterlife_ring) {
         // Ensure the multiplier is reset while the pack is off.
         cy_speed_ramp_go(0, 0);
         cy_speed_ramp_update();
