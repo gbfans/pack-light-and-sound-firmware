@@ -66,11 +66,27 @@ This matrix must be fully tested and passed before submitting changes. `N` refer
 
 ## 4. Key Code Modules
 
-- **Cyclotron Logic**: `SOFTWARE/cyclotron_sequences.cpp`
-- **Powercell Logic**: `SOFTWARE/powercell_sequences.cpp`
-- **Future/N-Filter Logic**: `SOFTWARE/future_sequences.cpp`
+- **Animation Effects (all strips)**: `SOFTWARE/animations.cpp` with the
+  controller framework in `SOFTWARE/animation_controller.cpp`
 - **Party Mode Logic**: `SOFTWARE/party_sequences.cpp`
+- **Strip Globals/Colors**: `SOFTWARE/cyclotron_sequences.cpp`,
+  `SOFTWARE/powercell_sequences.cpp`, `SOFTWARE/future_sequences.cpp`
 - **Input Handling (DIPs, Pots)**: `SOFTWARE/monitors.cpp`, `SOFTWARE/klystron_IO_support.cpp`
 - **State Machine**: `SOFTWARE/pack_state.cpp`
 - **LED Driver Abstraction**: `SOFTWARE/addressable_LED_support.cpp`
 - **Configuration Data**: `SOFTWARE/pack_config.cpp`
+
+## 5. Concurrency Rules
+
+The repeating-timer ISR (`pack_timer_isr`) advances the animation
+controllers and pushes LED frames; the main loop runs the state machine.
+When changing code, preserve these invariants:
+
+- Only the ISR calls `show_leds()` after startup (one warm-up frame in
+  `main()` precedes the timer).
+- `AnimationController` mutators run in the main loop; nothing in ISR
+  context may allocate or free (finished animations are retired and
+  destroyed by `pack_animations_reap()` in the main loop).
+- No sound-module I/O (UART writes, BUSY-pin waits) from ISR context.
+- Read-modify-writes on `user_switch_flags` outside the ISR must mask
+  interrupts (see the `clear_*` helpers).

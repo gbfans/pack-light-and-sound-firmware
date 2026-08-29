@@ -80,6 +80,10 @@ void song_monitor(void) {
   case SONG_MONITOR_DEBOUNCE:
     if (absolute_time_diff_us(debounce_timer, get_absolute_time()) >
         500 * 1000) {
+      // The rotation plays tracks 96 through 96 + pack_song_count: the
+      // wrap (and the first-ever toggle) selects track 96, and each
+      // following cycle advances one track. The SD card must provide all
+      // of those tracks.
       song = (song >= pack_song_count) ? 0x80 : 0x80 | (song + 1);
       sound_start_safely(96 + (song & 0x7f));
       party_mode_stop();

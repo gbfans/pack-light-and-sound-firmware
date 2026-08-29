@@ -1,5 +1,39 @@
 # Firmware Audit — August 2026
 
+> **Resolution status (2026-08-29):** every finding below has been addressed on
+> this branch, in the commits following the audit report:
+>
+> - **A1** — N-Filter firing light implemented; vent no longer drives the strip.
+> - **A2 + C4** — conditional tap clearing and interrupt-masked flag clears.
+> - **A3** — the speed multiplier is now the single cyclotron authority, applied
+>   only on Afterlife packs outside party mode; `adj_monitor` and
+>   `wait_for_sequence_end` no longer stomp configured animation speeds.
+> - **A4** — `sound_resume()` frame fixed (`\x06`); unused driver primitives marked.
+> - **A5/A6** — the simulator now compiles the firmware's own animation sources
+>   and steps in 4 ms firmware ticks; all 48 previews regenerated (future strip at
+>   its real 16 pixels), name parsing fixed, workflow triggers on what it builds.
+> - **C1** — `AnimationController` rewritten: fixed ring-buffer queue,
+>   interrupt-masked mutators, deferred destruction via `pack_animations_reap()`;
+>   no allocation or free ever happens in ISR context.
+> - **C2** — the Afterlife cooldown and powerdown fade run from the main loop on
+>   timestamps; no sound I/O, state writes, or ramp writes from the ISR. The
+>   cooldown also yields to re-fire and power-off now.
+> - **C3** — `show_leds()` is called only from the ISR (plus one pre-timer
+>   warm-up frame that also moves FastLED's DMA buffer allocation to main).
+> - **C5** — `pack_ctx.state` and `cy_speed_ramp` are single-context (main) after
+>   C2; `update_pack_colors()` masks interrupts around the color writes.
+> - **D** — dead code removed (`FillAnimation`, `CylonFadeOutAnimation` +
+>   `CY_PATTERN_RING_FADE_OUT`, `WaitAction`/`CallbackAction`, unused globals,
+>   the unused `mode_change_major` parameter, stale comments/flags);
+>   `PC_SPEED_DEFAULT` renamed `ADJ_SPEED_POT`; `PS_FIRE_COOLDOWN` is
+>   interruptible. The song-track rotation (96…96+count) is documented in code.
+> - **E** — README/SOFTWARE README/AGENTS.md corrected (module names,
+>   PS_FEEDBACK, ISR-vs-main description, badge, ADJ0 wording, Cylon claim);
+>   AGENTS.md gained a concurrency-rules section; firmware version bumped
+>   to 1.2.0.
+>
+> The findings text below is kept as written for the audit record.
+
 Full review of the pack light and sound firmware at commit `0aaba33` (main), covering
 race conditions, unreachable code, logic conflicts, and whether the animation previews
 and documentation match what the firmware actually does. The firmware was compiled
