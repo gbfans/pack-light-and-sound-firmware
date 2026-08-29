@@ -18,7 +18,9 @@
 #include "animations.h"
 #include "animation_controller.h"
 #include "pack_state.h"
-#include "Arduino.h"
+// millis() comes from the Arduino compatibility header, which both the
+// firmware build and the host-side simulator force-include (each supplies
+// its own version; a quoted include here would always pick the Pico one).
 #include <stdlib.h>
 
 #include <FastLED.h>
