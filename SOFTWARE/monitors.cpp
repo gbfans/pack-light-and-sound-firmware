@@ -546,7 +546,6 @@ void full_vent(void) {
   // Stop all animations that were started for the vent sequence.
   g_future_controller.stop();
   fill_solid(g_future_leds, NUM_LEDS_FUTURE, CRGB::Black);
-  show_leds();
   g_powercell_controller.stop();
   if (!is_afterlife_pack) {
     g_cyclotron_controller.stop();

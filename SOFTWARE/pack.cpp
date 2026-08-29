@@ -195,7 +195,6 @@ void pack_combo_startup(void) {
                 }
                 anim->setSpeed(speed, 0);
             }
-            show_leds();
             sleep_ms(20);
             if (!pu_sw() && !pack_pu_sw() && !wand_standby_sw()) break;
             if (fire_sw()) break;
@@ -223,7 +222,6 @@ void pack_combo_startup(void) {
                 }
                 anim->setSpeed(speed, 0);
             }
-            show_leds();
             if (!pu_sw() && !pack_pu_sw() && !wand_standby_sw()) break;
             if (fire_sw()) break;
             sleep_ms(20);

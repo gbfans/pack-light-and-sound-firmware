@@ -181,7 +181,6 @@ void pack_state_process(void) {
                 fill_solid(g_future_leds, NUM_LEDS_FUTURE, CRGB::Black);
             }
             ring_monitor();
-            show_leds();
             if (!STANDALONE_USE) {
                 pack_state_set_mode(PACK_MODE_PROTON_STREAM);
             }
