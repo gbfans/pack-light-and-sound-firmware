@@ -38,6 +38,7 @@ static const uint32_t AFTERLIFE_RAMP_START_SPEED_X = 5;
  */
 static void wait_for_animations_or_user() {
     do {
+        pack_animations_reap();
         sleep_ms(20);
         if (!pu_sw() && !pack_pu_sw() && !wand_standby_sw())
             break;
@@ -71,14 +72,14 @@ void pack_combo_startup(void) {
         sound_start_safely(10);
         {
             AnimationConfig pc_config;
-            pc_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+            pc_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
             pc_config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
             pc_config.leds = g_powercell_leds;
             pc_config.num_leds = NUM_LEDS_POWERCELL;
             g_powercell_controller.play(std::make_unique<ScrollAnimation>(), pc_config);
 
             AnimationConfig cy_config;
-            cy_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, true);
+            cy_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, true);
             cy_config.color = CRGB(cyclotron_color.r, cyclotron_color.g, cyclotron_color.b);
             cy_config.clockwise = (config_cyclotron_dir() == 0);
             cy_config.leds = g_cyclotron_leds;
@@ -107,14 +108,14 @@ void pack_combo_startup(void) {
         wait_for_animations_or_user();
         {
             AnimationConfig pc_config;
-            pc_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+            pc_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
             pc_config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
             pc_config.leds = g_powercell_leds;
             pc_config.num_leds = NUM_LEDS_POWERCELL;
             g_powercell_controller.play(std::make_unique<ScrollAnimation>(), pc_config);
 
             AnimationConfig cy_config;
-            cy_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, true);
+            cy_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, true);
             cy_config.color = CRGB(cyclotron_color.r, cyclotron_color.g, cyclotron_color.b);
             cy_config.clockwise = (config_cyclotron_dir() == 0);
             cy_config.leds = g_cyclotron_leds;
@@ -144,14 +145,14 @@ void pack_combo_startup(void) {
         wait_for_animations_or_user();
         {
             AnimationConfig pc_config;
-            pc_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+            pc_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
             pc_config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
             pc_config.leds = g_powercell_leds;
             pc_config.num_leds = NUM_LEDS_POWERCELL;
             g_powercell_controller.play(std::make_unique<ScrollAnimation>(), pc_config);
 
             AnimationConfig cy_config;
-            cy_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, true);
+            cy_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, true);
             cy_config.color = CRGB(cyclotron_color.r, cyclotron_color.g, cyclotron_color.b);
             cy_config.clockwise = (config_cyclotron_dir() == 0);
             cy_config.leds = g_cyclotron_leds;
@@ -185,6 +186,7 @@ void pack_combo_startup(void) {
         }
 
         do {
+            pack_animations_reap();
             cy_speed_ramp_update();
             if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
                 uint32_t speed = 1000;
@@ -193,7 +195,6 @@ void pack_combo_startup(void) {
                 }
                 anim->setSpeed(speed, 0);
             }
-            show_leds();
             sleep_ms(20);
             if (!pu_sw() && !pack_pu_sw() && !wand_standby_sw()) break;
             if (fire_sw()) break;
@@ -204,7 +205,7 @@ void pack_combo_startup(void) {
 
         {
             AnimationConfig pc_config;
-            pc_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+            pc_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
             pc_config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
             pc_config.leds = g_powercell_leds;
             pc_config.num_leds = NUM_LEDS_POWERCELL;
@@ -212,6 +213,7 @@ void pack_combo_startup(void) {
         }
 
         while (sound_is_playing()) {
+            pack_animations_reap();
             cy_speed_ramp_update();
             if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
                 uint32_t speed = 1000;
@@ -220,7 +222,6 @@ void pack_combo_startup(void) {
                 }
                 anim->setSpeed(speed, 0);
             }
-            show_leds();
             if (!pu_sw() && !pack_pu_sw() && !wand_standby_sw()) break;
             if (fire_sw()) break;
             sleep_ms(20);
@@ -252,19 +253,36 @@ void pack_short_powerup_sound(bool afterlife_higher) {
  *          pack shutdown. It uses a predefined sequence from the `pack_powerdown_sequences`
  *          configuration table.
  */
-static void wait_for_sequence_end() {
+static void wait_for_sequence_end(bool afterlife_ring, uint32_t ring_fade_ms) {
+    const uint32_t t0 = to_ms_since_boot(get_absolute_time());
+    bool ring_running = afterlife_ring;
     do {
-        cy_speed_ramp_update();
-        if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
-            uint32_t speed = 1000;
-            if (cy_speed_multiplier > 0) {
-                speed = speed * (1 << 16) / cy_speed_multiplier;
+        pack_animations_reap();
+        if (afterlife_ring) {
+            // Only Afterlife rings run off the speed multiplier; pumping the
+            // speed here for other pack types would override the fade
+            // duration their FadeAnimation was configured with.
+            cy_speed_ramp_update();
+            if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
+                uint32_t speed = 1000;
+                if (cy_speed_multiplier > 0) {
+                    speed = speed * (1 << 16) / cy_speed_multiplier;
+                }
+                anim->setSpeed(speed, 0);
             }
-            anim->setSpeed(speed, 0);
+            if (ring_running &&
+                (to_ms_since_boot(get_absolute_time()) - t0) >= ring_fade_ms) {
+                // The ChangeColorAction has faded the ring to black by now;
+                // retire the animation here in the main loop (this used to be
+                // a CallbackAction firing inside the timer ISR).
+                g_cyclotron_controller.stop();
+                ring_running = false;
+            }
         }
-        show_leds();
         sleep_ms(20);
-    } while (g_powercell_controller.isRunning() || g_cyclotron_controller.isRunning() || sound_is_playing());
+    } while (g_powercell_controller.isRunning() || ring_running ||
+             (!afterlife_ring && g_cyclotron_controller.isRunning()) ||
+             sound_is_playing());
     sleep_ms(10);
 }
 
@@ -299,11 +317,12 @@ void pack_combo_powerdown(void) {
     cy_config.leds = g_cyclotron_leds;
     cy_config.num_leds = g_cyclotron_led_count;
 
-    if (config_pack_type() == PACK_TYPE_AFTERLIFE ||
-        config_pack_type() == PACK_TYPE_AFTER_TVG) {
+    const bool afterlife_ring = (config_pack_type() == PACK_TYPE_AFTERLIFE ||
+                                 config_pack_type() == PACK_TYPE_AFTER_TVG);
+    if (afterlife_ring) {
+        // Fade the ring color to black over the configured duration; the
+        // wait loop below stops the animation once the fade has elapsed.
         g_cyclotron_controller.enqueue(std::make_unique<ChangeColorAction>(CRGB::Black, seq->cy_ms, QUADRATIC_OUT));
-        g_cyclotron_controller.enqueue(std::make_unique<WaitAction>(seq->cy_ms));
-        g_cyclotron_controller.enqueue(std::make_unique<CallbackAction>([]() { g_cyclotron_controller.stop(); }));
     } else {
         switch (seq->cy_pattern) {
         case CY_PATTERN_INSTANT_OFF:
@@ -313,16 +332,12 @@ void pack_combo_powerdown(void) {
         case CY_PATTERN_FADE_OUT:
             g_cyclotron_controller.play(std::make_unique<FadeAnimation>(true), cy_config);
             break;
-        case CY_PATTERN_RING_FADE_OUT:
-            g_cyclotron_controller.play(std::make_unique<CylonFadeOutAnimation>(), cy_config);
-            break;
         }
     }
 
-    wait_for_sequence_end();
+    wait_for_sequence_end(afterlife_ring, seq->cy_ms);
 
-    if (config_pack_type() == PACK_TYPE_AFTERLIFE ||
-        config_pack_type() == PACK_TYPE_AFTER_TVG) {
+    if (afterlife_ring) {
         // Ensure the multiplier is reset while the pack is off.
         cy_speed_ramp_go(0, 0);
         cy_speed_ramp_update();

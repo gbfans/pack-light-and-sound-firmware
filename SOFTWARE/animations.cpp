@@ -7,7 +7,7 @@
 
 // --- Helper functions for cyclotron-specific animations ---
 // These are still needed for RotateAnimation and SlimeAnimation
-extern const uint8_t cyc_classic_pos[4][5];
+extern const uint8_t cyc_classic_pos[4][4];
 extern volatile uint8_t cyclotron_color_set_size;
 extern volatile CRGB cyclotron_color_set[5];
 
@@ -158,37 +158,6 @@ void SlimeAnimation::update(uint32_t dt) {
 }
 bool SlimeAnimation::isDone() { return false; }
 
-void CylonFadeOutAnimation::start(const AnimationConfig& config) {
-    Animation::start(config);
-    this->pos_accum = 0;
-    this->fade_value = 0;
-    this->seq_num = 0;
-    this->done = false;
-    this->time_since_last_update = 0;
-}
-
-void CylonFadeOutAnimation::update(uint32_t dt) {
-    Animation::update(dt);
-    if (done) return;
-    uint32_t delta = this->speed_ramp.getValue();
-    pos_accum += (delta * dt) / 16;
-    if (pos_accum >= (1 << 14)) {
-        config.leds[seq_num % config.num_leds] = CRGB::Black;
-        seq_num = (seq_num + (pos_accum >> 14)) % config.num_leds;
-        pos_accum &= 0x3FFF;
-    }
-    CRGB base = this->color_ramp.getValue();
-    base.nscale8(255 - (fade_value >> 8));
-    config.leds[seq_num % config.num_leds] = base;
-    uint32_t new_fade = (uint32_t)fade_value + this->config.fade_amount;
-    fade_value = (new_fade > 65535) ? 65535 : (uint16_t)new_fade;
-    if (fade_value >= 65535) {
-        done = true;
-        fill_solid(config.leds, config.num_leds, CRGB::Black);
-    }
-}
-bool CylonFadeOutAnimation::isDone() { return done; }
-
 void ScrollAnimation::start(const AnimationConfig& config) {
     Animation::start(config);
     fill_solid(config.leds, config.num_leds, CRGB::Black);
@@ -208,28 +177,6 @@ void ScrollAnimation::update(uint32_t dt) {
     }
 }
 bool ScrollAnimation::isDone() { return false; }
-
-void FillAnimation::start(const AnimationConfig& config) {
-    Animation::start(config);
-    fill_solid(config.leds, config.num_leds, CRGB::Black);
-    this->seq_num = 0;
-    this->done = false;
-    this->time_since_last_update = 0;
-}
-
-void FillAnimation::update(uint32_t dt) {
-    Animation::update(dt);
-    if (done) return;
-    uint16_t step_time_ms = this->speed_ramp.getValue() / config.num_leds;
-    time_since_last_update += dt;
-    if (time_since_last_update >= step_time_ms) {
-        time_since_last_update = 0;
-        config.leds[seq_num] = this->color_ramp.getValue();
-        seq_num++;
-        if (seq_num >= config.num_leds) done = true;
-    }
-}
-bool FillAnimation::isDone() { return done; }
 
 void DrainAnimation::start(const AnimationConfig& config) {
     Animation::start(config);
@@ -396,7 +343,7 @@ bool FadeAnimation::isDone() { return done; }
 
 // --- Feedback Animations ---
 
-void FeedbackRainbowAnimation::start(const AnimationConfig& config) {
+void RingSizeFeedbackAnimation::start(const AnimationConfig& config) {
     Animation::start(config);
     this->elapsed_ms = 0;
 
@@ -410,15 +357,32 @@ void FeedbackRainbowAnimation::start(const AnimationConfig& config) {
     }
 }
 
-void FeedbackRainbowAnimation::update(uint32_t dt) {
+void RingSizeFeedbackAnimation::update(uint32_t dt) {
     Animation::update(dt);
     this->elapsed_ms += dt;
 
-    // Animate a full rainbow across the active LEDs.  The hue shifts over
-    // time so the colors appear to rotate while always covering the spectrum.
-    uint8_t start_hue = (this->elapsed_ms / 10) & 0xFF;
-    uint8_t hue_step = config.num_leds ? (255 / config.num_leds) : 0;
-    fill_rainbow(config.leds, config.num_leds, start_hue, hue_step);
+    // One unmistakable look per ring size, so the setting reads correctly
+    // even on rings with fewer physical LEDs than the selected count.
+    switch (config.num_leds) {
+    case 4:
+        fill_solid(config.leds, config.num_leds, CRGB::Red);
+        break;
+    case 24:
+        fill_solid(config.leds, config.num_leds, CRGB::Green);
+        break;
+    case 32:
+        fill_solid(config.leds, config.num_leds, CRGB::Blue);
+        break;
+    default: {
+        // 40 (and any future size): scrolling rainbow across the ring. The
+        // hue shifts over time so the colors rotate while always covering
+        // the spectrum.
+        uint8_t start_hue = (this->elapsed_ms / 10) & 0xFF;
+        uint8_t hue_step = config.num_leds ? (255 / config.num_leds) : 0;
+        fill_rainbow(config.leds, config.num_leds, start_hue, hue_step);
+        break;
+    }
+    }
 
     // Ensure any LEDs beyond the active range remain dark to prevent
     // residual pixels from previous animations when fewer LEDs are active.
@@ -430,11 +394,11 @@ void FeedbackRainbowAnimation::update(uint32_t dt) {
 
 }
 
-bool FeedbackRainbowAnimation::isDone() {
+bool RingSizeFeedbackAnimation::isDone() {
     return this->elapsed_ms >= this->duration_ms;
 }
 
-void FeedbackRainbowAnimation::updateConfig(const AnimationConfig& config, uint32_t extend_ms) {
+void RingSizeFeedbackAnimation::updateConfig(const AnimationConfig& config, uint32_t extend_ms) {
     uint32_t saved_elapsed = this->elapsed_ms;
     Animation::start(config);
     this->elapsed_ms = saved_elapsed;

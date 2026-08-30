@@ -14,6 +14,7 @@
 #include "future_sequences.h"
 #include "pack_state.h"
 #include "pack_config.h"
+#include "hardware/sync.h"
 #include <string.h>
 
 /**
@@ -29,19 +30,21 @@
  */
 void update_pack_colors(void) {
     PackMode mode = pack_state_get_mode();
-    CRGB temp_color = pack_mode_colors[mode].powercell;
-    memcpy((void*)&powercell_color, &temp_color, sizeof(CRGB));
-    temp_color = pack_mode_colors[mode].cyclotron;
-    const bool afterlife_std = (config_pack_type() == PACK_TYPE_AFTERLIFE);
-    const bool afterlife_tvg = (config_pack_type() == PACK_TYPE_AFTER_TVG);
-    if (afterlife_std) {
-        temp_color = CRGB::Red;
+    CRGB pc = pack_mode_colors[mode].powercell;
+    CRGB cy = pack_mode_colors[mode].cyclotron;
+    CRGB fr = pack_mode_colors[mode].future;
+    if (config_pack_type() == PACK_TYPE_AFTERLIFE) {
+        // Plain Afterlife packs keep a red ring regardless of mode; only
+        // Afterlife TVG recolors the cyclotron per weapon.
+        cy = CRGB::Red;
     }
-    memcpy((void*)&cyclotron_color, &temp_color, sizeof(CRGB));
-    if (afterlife_std || afterlife_tvg) {
-        // Afterlife-specific color initialization removed; no action needed.
-    }
-    temp_color = pack_mode_colors[mode].future;
-    memcpy((void*)&future_color, &temp_color, sizeof(CRGB));
+    // The color globals are three bytes each and are read by the animations
+    // running in the timer ISR; mask interrupts so a color change can never
+    // be observed half-written (one frame with mixed channels).
+    uint32_t irq_state = save_and_disable_interrupts();
+    memcpy((void*)&powercell_color, &pc, sizeof(CRGB));
+    memcpy((void*)&cyclotron_color, &cy, sizeof(CRGB));
+    memcpy((void*)&future_color, &fr, sizeof(CRGB));
+    restore_interrupts(irq_state);
 }
 

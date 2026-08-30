@@ -80,6 +80,10 @@ void song_monitor(void) {
   case SONG_MONITOR_DEBOUNCE:
     if (absolute_time_diff_us(debounce_timer, get_absolute_time()) >
         500 * 1000) {
+      // The rotation plays tracks 96 through 96 + pack_song_count: the
+      // wrap (and the first-ever toggle) selects track 96, and each
+      // following cycle advances one track. The SD card must provide all
+      // of those tracks.
       song = (song >= pack_song_count) ? 0x80 : 0x80 | (song + 1);
       sound_start_safely(96 + (song & 0x7f));
       party_mode_stop();
@@ -140,8 +144,6 @@ void song_monitor(void) {
  */
 void sound_start_safely(uint8_t sound_index) {
   song &= 0x7F; // Clear the song playing flag
-  // Ensure any LED DMA transfers have completed to avoid contention when
-  // communicating with the sound module.
   if (sound_is_playing()) {
     sound_stop();
     absolute_time_t start = get_absolute_time();
@@ -305,24 +307,23 @@ void adj_monitor(void) {
   read_adj_potentiometers(true);     // read the ADC and average the samples
 
   static uint16_t last_pc_speed = 0;
-  static uint16_t last_cy_speed = 0;
 
-  uint16_t pc_speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, heating_effect, false);
+  // ADJ0 (and the heat effect) drive the powercell only. Cyclotron speed is
+  // fixed at the configured midpoint for classic/TVG packs and follows the
+  // speed multiplier on Afterlife packs (applied in pack_state_process());
+  // the old write here used the multiplier in the opposite sense of that
+  // authority and the two fought over the same animation.
+  uint16_t pc_speed = adj_to_ms_cycle(ADJ_SPEED_POT, heating_effect, false);
   update_animation_speed(g_powercell_controller, pc_speed, last_pc_speed);
-
-  uint16_t cy_speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, heating_effect, true);
-  update_animation_speed(g_cyclotron_controller, cy_speed, last_cy_speed);
 }
 
 /**
  * @brief Perform a major mode change with coordinated sounds and lights.
  *
- * @param cyclotron_pattern_base Base cyclotron pattern index.
  * @param first_sound Sound to play during drain.
  * @param second_sound Optional sound to play with fade-in.
  */
-void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
-                       uint8_t second_sound) {
+void mode_change_major(uint8_t first_sound, uint8_t second_sound) {
   const bool afterlife_std = (config_pack_type() == PACK_TYPE_AFTERLIFE);
   const bool afterlife_tvg = (config_pack_type() == PACK_TYPE_AFTER_TVG);
   const bool afterlife_variant = afterlife_std || afterlife_tvg;
@@ -357,6 +358,7 @@ void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
         MODE_CHANGE_TIMEOUT_MS * 1000) {
       break;
     }
+    pack_animations_reap();
     sleep_ms(20);
   }
 
@@ -367,7 +369,7 @@ void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
   pc_normal_config.num_leds = NUM_LEDS_POWERCELL;
   pc_normal_config.color =
       CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
-  pc_normal_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+  pc_normal_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
   g_powercell_controller.play(std::make_unique<ScrollAnimation>(),
                               pc_normal_config);
 
@@ -377,6 +379,7 @@ void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
         MODE_CHANGE_TIMEOUT_MS * 1000) {
       break;
     }
+    pack_animations_reap();
     sleep_ms(20);
   }
 
@@ -398,6 +401,7 @@ void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
             MODE_CHANGE_TIMEOUT_MS * 1000) {
           break;
         }
+        pack_animations_reap();
         sleep_ms(20);
       }
     }
@@ -409,7 +413,7 @@ void mode_change_major(uint8_t cyclotron_pattern_base, uint8_t first_sound,
     cy_base_config.num_leds = g_cyclotron_led_count;
     cy_base_config.color =
         CRGB(cyclotron_color.r, cyclotron_color.g, cyclotron_color.b);
-    cy_base_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, true);
+    cy_base_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, true);
     cy_base_config.clockwise = (config_cyclotron_dir() == 0);
     if (config_pack_type() == PACK_TYPE_FADE_RED ||
         config_pack_type() == PACK_TYPE_TVG_FADE) {
@@ -453,7 +457,7 @@ void mode_monitor(void) {
       break;
     case PACK_MODE_BOSON_DART:
       pack_ctx.mode = next;
-      mode_change_major(7, 23, 0);
+      mode_change_major(23, 0);
       break;
     case PACK_MODE_SLIME_BLOWER:
       pack_state_set_mode(next);
@@ -461,7 +465,7 @@ void mode_monitor(void) {
       break;
     case PACK_MODE_SLIME_TETHER:
       pack_ctx.mode = next;
-      mode_change_major(5, 24, 32);
+      mode_change_major(24, 32);
       break;
     case PACK_MODE_STASIS_STREAM:
       pack_state_set_mode(next);
@@ -469,7 +473,7 @@ void mode_monitor(void) {
       break;
     case PACK_MODE_SHOCK_BLAST:
       pack_ctx.mode = next;
-      mode_change_major(5, 33, 42);
+      mode_change_major(33, 42);
       break;
     case PACK_MODE_OVERLOAD_PULSE:
       pack_state_set_mode(next);
@@ -477,7 +481,7 @@ void mode_monitor(void) {
       break;
     default:
       pack_ctx.mode = PACK_MODE_PROTON_STREAM;
-      mode_change_major(5, 43, 0);
+      mode_change_major(43, 0);
       break;
     }
     cool_the_pack();
@@ -498,6 +502,9 @@ void full_vent(void) {
   const PackType pack_type = config_pack_type();
   const bool is_afterlife_pack =
       (pack_type == PACK_TYPE_AFTERLIFE) || (pack_type == PACK_TYPE_AFTER_TVG);
+
+  // The N-Filter ("future") strip is the vent light: a strobe on classic and
+  // TVG packs, the rotating four-on pattern on Afterlife.
   AnimationConfig fr_config;
   fr_config.leds = g_future_leds;
   fr_config.num_leds = NUM_LEDS_FUTURE;
@@ -532,17 +539,20 @@ void full_vent(void) {
     g_cyclotron_controller.play(std::make_unique<FadeAnimation>(true),
                                 cy_config);
   }
+  // Hold the relay output on for the whole vent. The RELAY connector drives
+  // smoke machines (or legacy trigger boards with their own delay/duration
+  // timing); the original firmware's 50/120 ms lamp strobe rapid-cycled
+  // those loads. A plain lamp wired here now lights steadily instead.
+  vent_relay_on(true);
   do {
-    vent_light_on(true);
-    sleep_ms(50);
-    vent_light_on(false);
-    sleep_ms(120);
+    pack_animations_reap();
+    sleep_ms(20);
   } while (vent_sw() || sound_is_playing());
+  vent_relay_on(false);
 
   // Stop all animations that were started for the vent sequence.
   g_future_controller.stop();
   fill_solid(g_future_leds, NUM_LEDS_FUTURE, CRGB::Black);
-  show_leds();
   g_powercell_controller.stop();
   if (!is_afterlife_pack) {
     g_cyclotron_controller.stop();
@@ -554,7 +564,7 @@ void full_vent(void) {
   pc_normal_config.num_leds = NUM_LEDS_POWERCELL;
   pc_normal_config.color =
       CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
-  pc_normal_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
+  pc_normal_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
   g_powercell_controller.play(std::make_unique<ScrollAnimation>(),
                               pc_normal_config);
 
@@ -572,7 +582,7 @@ void full_vent(void) {
     cy_config.num_leds = g_cyclotron_led_count;
     cy_config.color =
         CRGB(cyclotron_color.r, cyclotron_color.g, cyclotron_color.b);
-    cy_config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, true);
+    cy_config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, true);
     cy_config.clockwise = (config_cyclotron_dir() == 0);
     g_cyclotron_controller.play(std::make_unique<RotateAnimation>(), cy_config);
   }
@@ -603,10 +613,12 @@ void vent_monitor(void) {
  *          allowed `N` values: {4, 24, 32, 40}. Changes are applied immediately
  *          and the remainder of the cyclotron LEDs are cleared so that reducing
  *          `N` never leaves stray pixels lit. When the value changes, it
- *          optionally triggers a brief rainbow animation on the cyclotron LEDs
- *          as feedback when the pack is off. The animation is handled by a
- *          temporary pack state so it does not interfere with normal
- *          cyclotron control.
+ *          triggers a brief confirmation on the cyclotron LEDs when the pack
+ *          is off: solid red for 4, green for 24, blue for 32, and a
+ *          scrolling rainbow for 40, so the setting is readable even on
+ *          rings with fewer physical LEDs than the selected count. The
+ *          animation is handled by a temporary pack state so it does not
+ *          interfere with normal cyclotron control.
  */
 void ring_monitor(void) {
   if (party_mode_is_active())

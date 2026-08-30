@@ -55,7 +55,6 @@ enum {
 /** Cyclotron pattern identifiers used in configuration tables. */
 enum {
     CY_PATTERN_FADE_OUT = 0,
-    CY_PATTERN_RING_FADE_OUT = 1,
     CY_PATTERN_INSTANT_OFF = 2
 };
 

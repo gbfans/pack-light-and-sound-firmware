@@ -19,16 +19,13 @@
 extern "C" {
 #endif
 
-// These are still needed for now, as they are used by the RotateAnimation
-// and other parts of the code.
-extern volatile CRGB cyclotron_after_set[3][3];
+// Shared state read by the cyclotron animations in animations.cpp.
 extern volatile CRGB cyclotron_color;
-extern volatile uint8_t cyclotron_seq_num;
 extern volatile uint8_t cyclotron_color_set_size;
 extern volatile CRGB cyclotron_color_set[5];
 extern volatile uint8_t g_cyclotron_led_count;
 
-extern const uint8_t cyc_classic_pos[4][5];
+extern const uint8_t cyc_classic_pos[4][4];
 
 #ifdef __cplusplus
 }

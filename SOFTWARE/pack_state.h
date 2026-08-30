@@ -135,6 +135,16 @@ void feedback_request(void);
  */
 void pack_state_process(void);
 
+/**
+ * @brief Destroys animations and actions the timer ISR has finished with.
+ * @details The animation controllers never free memory in interrupt context;
+ *          finished objects are parked until this is called from the main
+ *          loop. `pack_state_process()` calls it every pass, and any helper
+ *          that blocks the main loop while animations run should call it in
+ *          its wait loop.
+ */
+void pack_animations_reap(void);
+
 #ifdef __cplusplus
 }
 #endif

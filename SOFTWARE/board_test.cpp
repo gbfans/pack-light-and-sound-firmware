@@ -37,10 +37,8 @@ static void announce_version(CRGB color) {
         // Blink the corresponding powercell LED to indicate the digit value.
         for (uint8_t b = 0; b < digits[part]; ++b) {
             g_powercell_leds[leds[part]] = color;
-            show_leds();
             sleep_ms(150);
             g_powercell_leds[leds[part]] = CRGB::Black;
-            show_leds();
             sleep_ms(150);
         }
 
@@ -68,15 +66,12 @@ static void announce_version(CRGB color) {
  */
 static void test_color(CRGB color, int delay) {
     fill_solid(g_powercell_leds, NUM_LEDS_POWERCELL, color);
-    show_leds();
     sleep_ms(delay);
 
     fill_solid(g_cyclotron_leds, NUM_LEDS_CYCLOTRON, color);
-    show_leds();
     sleep_ms(delay);
 
     fill_solid(g_future_leds, NUM_LEDS_FUTURE, color);
-    show_leds();
     sleep_ms(delay);
 }
 
@@ -100,7 +95,6 @@ void board_test(void) {
   fill_solid(g_powercell_leds, NUM_LEDS_POWERCELL, CRGB::Black);
   fill_solid(g_cyclotron_leds, NUM_LEDS_CYCLOTRON, CRGB::Black);
   fill_solid(g_future_leds, NUM_LEDS_FUTURE, CRGB::Black);
-  show_leds();
 
   test_color(CRGB::Red, delay);
   test_color(CRGB::Green, delay);
@@ -125,13 +119,11 @@ void board_test(void) {
   g_future_leds[2] = CRGB::Blue;
   g_future_leds[NUM_LEDS_FUTURE - 2] = CRGB::Red + CRGB::Blue;
   g_future_leds[NUM_LEDS_FUTURE - 1] = CRGB::Red + CRGB::Green;
-  show_leds();
   sleep_ms(5000);
 
   fill_solid(g_powercell_leds, NUM_LEDS_POWERCELL, CRGB::Black);
   fill_solid(g_cyclotron_leds, NUM_LEDS_CYCLOTRON, CRGB::Black);
   fill_solid(g_future_leds, NUM_LEDS_FUTURE, CRGB::Black);
-  show_leds();
   sleep_ms(5);
 
   sound_start(0x17);
@@ -148,12 +140,10 @@ void board_test(void) {
     g_powercell_leds[NUM_LEDS_POWERCELL - 3] = ((adj_pot[1] >= 1450) && (adj_pot[1] <= 2450)) ? CRGB(0, adj_pot[1] >> 4, 0) : CRGB::Black;
     g_powercell_leds[NUM_LEDS_POWERCELL - 4] = ((adj_pot[1] < 1450) && (adj_pot[1] >= 50)) ? CRGB(0, adj_pot[1] >> 4, 0) : CRGB::Black;
     g_powercell_leds[NUM_LEDS_POWERCELL - 5] = (adj_pot[1] < 50) ? CRGB::Red : CRGB::Black;
-    show_leds();
     sleep_ms(50);
   } while (!fire_sw());
 
   fill_solid(g_powercell_leds, NUM_LEDS_POWERCELL, CRGB::Black);
-  show_leds();
   sleep_ms(5);
 
   sound_start(0x17);
@@ -172,28 +162,27 @@ void board_test(void) {
     g_powercell_leds[12] = fire_sw() ? powercell_color : CRGB::Black;
     g_powercell_leds[13] = song_sw() ? powercell_color + CRGB::Red : CRGB::Black;
     g_powercell_leds[14] = vent_sw() ? powercell_color + CRGB::Green : CRGB::Black;
-    show_leds();
     nsignal_to_wandlights(config_dip_sw != 0);
     sleep_ms(50);
   } while ((config_dip_sw != 0) || !fire_sw());
 
   fill_solid(g_powercell_leds, NUM_LEDS_POWERCELL, CRGB::Black);
-  show_leds();
   sleep_ms(5);
 
   sound_start(0x21);
   sound_wait_til_end(false, false);
   sound_start(0x2A);
   sound_wait_til_end(false, false);
-  for (int i = 0; i < 30; i++) {
-    vent_light_on(true);
+  // Three deliberate one-second holds: the tester can hear the relay click
+  // and see the mirror pixel, without rapid-cycling a connected smoke
+  // machine the way the old 50/120 ms lamp strobe did.
+  for (int i = 0; i < 3; i++) {
+    vent_relay_on(true);
     g_powercell_leds[8] = powercell_color;
-    show_leds();
-    sleep_ms(50);
-    vent_light_on(false);
-    g_powercell_leds[8] = powercell_color;
-    show_leds();
-    sleep_ms(120);
+    sleep_ms(1000);
+    vent_relay_on(false);
+    g_powercell_leds[8] = CRGB::Black;
+    sleep_ms(1000);
   }
   sound_start(0x2B);
   sound_wait_til_end(false, false);

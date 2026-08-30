@@ -101,6 +101,8 @@ void sound_stop(void) {
  * @brief Pauses playback of the current sound.
  * @details Sends the "pause" command sequence over UART.
  * @note The sound can be resumed from the same position with `sound_resume()`.
+ * @note Not currently called by the firmware; kept as part of the sound
+ *       board's command set.
  */
 void sound_pause(void) {
     if (gpio_get(pack_sound_busy_pin) == pack_sound_busy_level) {
@@ -116,9 +118,11 @@ void sound_pause(void) {
 /**
  * @brief Resumes playback of a previously paused sound.
  * @details Sends the "resume" command sequence over UART.
+ * @note Not currently called by the firmware; kept as part of the sound
+ *       board's command set.
  */
 void sound_resume(void) {
-    uart_puts(uart0, "\x7E\xFF\x0G");
+    uart_puts(uart0, "\x7E\xFF\x06");
     uart_putc_raw(uart0, '\x0D');
     uart_putc_raw(uart0, '\x00');
     uart_putc_raw(uart0, '\x00');
@@ -130,6 +134,8 @@ void sound_resume(void) {
  * @brief Plays a sound in a continuous loop.
  * @details Sends the "play track in loop" command sequence over UART.
  * @param sound_index The index of the sound file to repeat.
+ * @note Not currently called by the firmware. Unlike `sound_start()` this
+ *       sends `sound_index + 1`; verify against the sound board before use.
  */
 void sound_repeat(uint8_t sound_index) {
     uart_puts(uart0, "\x7E\xFF\x06");

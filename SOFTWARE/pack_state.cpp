@@ -36,6 +36,11 @@
 #define AUTOVENT_MS_CYCLE 250
 #define FEEDBACK_DURATION_MS 5000
 
+/** Afterlife post-fire cooldown: ring slows for this long... */
+#define COOLDOWN_SLOWDOWN_MS 1000
+/** ...then accelerates back to idle speed over this long. */
+#define COOLDOWN_SPEEDUP_MS 4000
+
 
 /** Global pack state context. */
 PackContext pack_ctx = {
@@ -48,6 +53,13 @@ uint32_t cy_speed_multiplier = 1 << 16; // 16.16 fixed point for cyclotron speed
 static rampUnsignedLong cy_speed_ramp(cy_speed_multiplier);
 static bool feedback_anim_needs_start = false;
 static uint32_t feedback_end_time = 0;
+
+// Afterlife post-fire cooldown bookkeeping. The whole cooldown runs here in
+// the main loop off these timestamps; nothing about it is queued on the
+// animation controllers, so no sound or state work ever runs in the timer
+// ISR and the sequence can be interrupted (re-fire, power-off) at any pass.
+static uint32_t cooldown_start_ms = 0;
+static uint8_t cooldown_phase = 0;
 
 void cy_speed_ramp_go(uint32_t target, unsigned long duration) {
     // Synchronize the ramp's starting point with the current multiplier so
@@ -82,6 +94,36 @@ void pack_state_set_state(PackState state) { pack_ctx.state = state; }
 
 PackState pack_state_get_state(void) { return pack_ctx.state; }
 
+/**
+ * @brief Ramps the Afterlife cyclotron up for firing.
+ * @details Speed rises toward 1.25x idle speed, timed so it tops out roughly
+ *          when the heat simulation would force an autovent.
+ */
+static void afterlife_fire_rampup(void) {
+    uint32_t base = afterlife_target_speed_x();
+    uint32_t high = (base * 5) / 4;
+    uint16_t start_autovent = pack_heat_settings[config_pack_type()].start_autovent;
+    uint32_t remaining = (temperature < start_autovent) ? (start_autovent - temperature) : 0;
+    uint32_t duration = remaining * pack_isr_interval_ms;
+    cy_speed_ramp_go(high << 16, duration);
+}
+
+/**
+ * @brief Ends the Afterlife cooldown: silence the tail, restore idle sounds
+ *        and the powercell scroll, and drop back to PS_IDLE.
+ */
+static void finish_fire_cooldown(void) {
+    sound_stop();
+    hum_monitor();
+    AnimationConfig config;
+    config.speed = adj_to_ms_cycle(ADJ_SPEED_POT, false, false);
+    config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
+    config.leds = g_powercell_leds;
+    config.num_leds = NUM_LEDS_POWERCELL;
+    g_powercell_controller.play(std::make_unique<ScrollAnimation>(), config);
+    pack_state_set_state(PS_IDLE);
+}
+
 void feedback_request(void) {
     AnimationConfig cy_config;
     cy_config.leds = g_cyclotron_leds;
@@ -93,7 +135,7 @@ void feedback_request(void) {
         feedback_anim_needs_start = true;
     } else if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
         // Animation already running; update LED count and extend duration.
-        static_cast<FeedbackRainbowAnimation*>(anim)->updateConfig(cy_config, FEEDBACK_DURATION_MS);
+        static_cast<RingSizeFeedbackAnimation*>(anim)->updateConfig(cy_config, FEEDBACK_DURATION_MS);
     } else {
         feedback_anim_needs_start = true;
     }
@@ -105,15 +147,28 @@ void feedback_request(void) {
  *          evaluates the current state and user inputs to determine and
  *          execute the correct pack behavior.
  */
+void pack_animations_reap(void) {
+    g_powercell_controller.reap();
+    g_cyclotron_controller.reap();
+    g_future_controller.reap();
+}
+
 void pack_state_process(void) {
+    pack_animations_reap();
     song_monitor();
     cy_speed_ramp_update();
-    if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
-        uint32_t speed = 0;
-        if (cy_speed_multiplier > 0) {
-            speed = (1000 * (1 << 16)) / cy_speed_multiplier;
+    // The 16.16 multiplier is the single authority over cyclotron speed,
+    // and it only exists on Afterlife packs (spin-up, fire ramp, cooldown).
+    // Other pack types run at whatever speed their animation was configured
+    // with, and party-mode animations own their speeds outright - blanket
+    // writes here are what used to jam the party Cylon scanner to ~1 s/step
+    // on the ring while the other strips stepped at 40 ms.
+    if ((config_pack_type() == PACK_TYPE_AFTERLIFE ||
+         config_pack_type() == PACK_TYPE_AFTER_TVG) &&
+        !party_mode_is_active() && cy_speed_multiplier > 0) {
+        if (auto* anim = g_cyclotron_controller.getCurrentAnimation()) {
+            anim->setSpeed((1000 * (1 << 16)) / cy_speed_multiplier, 0);
         }
-        anim->setSpeed(speed, 0);
     }
     if (pack_ctx.state != PS_OFF && party_mode_is_active()) {
         party_mode_stop();
@@ -132,10 +187,6 @@ void pack_state_process(void) {
                 fill_solid(g_future_leds, NUM_LEDS_FUTURE, CRGB::Black);
             }
             ring_monitor();
-            show_leds();
-            if (!STANDALONE_USE) {
-                pack_state_set_mode(PACK_MODE_PROTON_STREAM);
-            }
         } else {
             ring_monitor();
         }
@@ -159,7 +210,15 @@ void pack_state_process(void) {
             pack_state_set_state(PS_WAND_STANDBY);
             pack_combo_startup();
         }
-        clear_fire_tap();
+        // Discard stray taps only while no song is playing. During a song,
+        // taps cycle the party animations and are consumed by song_monitor()
+        // at the top of the next pass - clearing here as well would race it:
+        // a tap raised by the ISR after song_monitor() sampled the flag but
+        // before this line would be erased unseen, and that window spans most
+        // of the pass.
+        if (!song_is_playing()) {
+            clear_fire_tap();
+        }
         break;
     case PS_FEEDBACK:
         if (feedback_anim_needs_start) {
@@ -167,7 +226,7 @@ void pack_state_process(void) {
             cy_config.leds = g_cyclotron_leds;
             cy_config.num_leds = g_cyclotron_led_count;
             g_cyclotron_controller.play(
-                std::make_unique<FeedbackRainbowAnimation>(FEEDBACK_DURATION_MS),
+                std::make_unique<RingSizeFeedbackAnimation>(FEEDBACK_DURATION_MS),
                 cy_config);
             feedback_anim_needs_start = false;
         }
@@ -241,12 +300,7 @@ void pack_state_process(void) {
             if ((config_pack_type() == PACK_TYPE_AFTERLIFE ||
                  config_pack_type() == PACK_TYPE_AFTER_TVG) &&
                 next == PS_FIRE) {
-                uint32_t base = afterlife_target_speed_x();
-                uint32_t high = (base * 5) / 4;
-                uint16_t start_autovent = pack_heat_settings[config_pack_type()].start_autovent;
-                uint32_t remaining = (temperature < start_autovent) ? (start_autovent - temperature) : 0;
-                uint32_t duration = remaining * pack_isr_interval_ms;
-                cy_speed_ramp_go(high << 16, duration);
+                afterlife_fire_rampup();
             }
         } else {
             hum_monitor();
@@ -257,17 +311,38 @@ void pack_state_process(void) {
         }
         break;
     case PS_FIRE_COOLDOWN: {
-        hum_monitor();
-        adj_monitor();
-        // The fire cooldown sequence is now managed by the AnimationController's action queue.
-        // This state is now just a waiting state. We could add logic here to
-        // interrupt the sequence if needed.
+        // Timestamp-driven, fully in the main loop: slow the ring, speed it
+        // back up, then restore the idle sounds and powercell. Unlike the old
+        // action-queue version this never runs sound I/O in the timer ISR,
+        // and the cooldown yields to a re-fire or a power-off immediately.
+        uint32_t elapsed =
+            to_ms_since_boot(get_absolute_time()) - cooldown_start_ms;
+        if (!song_is_playing() && fire_sw()) {
+            pack_state_set_state(PS_FIRE);
+            monster_fire();
+            fire_department(0);
+            afterlife_fire_rampup();
+        } else if (!song_is_playing() && !pu_sw()) {
+            // Wand switched off mid-cooldown: wrap up now so the next pass
+            // runs the normal PS_IDLE power-down path without waiting out
+            // the remaining cooldown.
+            finish_fire_cooldown();
+        } else if (cooldown_phase == 0 && elapsed >= COOLDOWN_SLOWDOWN_MS) {
+            cooldown_phase = 1;
+            cy_speed_ramp_go(afterlife_target_speed_x() << 16,
+                             COOLDOWN_SPEEDUP_MS);
+        } else if (cooldown_phase == 1 &&
+                   elapsed >= COOLDOWN_SLOWDOWN_MS + COOLDOWN_SPEEDUP_MS) {
+            finish_fire_cooldown();
+        } else {
+            hum_monitor();
+            adj_monitor();
+        }
     } break;
     case PS_SLIME_FIRE:
         if (!fire_sw()) {
             pack_state_set_state(PS_IDLE);
             fire_department(1);
-            g_future_controller.stop();
             clear_fire_tap();
             while (fire_sw()) {
                 sleep_ms(50);
@@ -293,34 +368,14 @@ void pack_state_process(void) {
         if (!fire_sw()) {
             if (config_pack_type() == PACK_TYPE_AFTERLIFE || config_pack_type() == PACK_TYPE_AFTER_TVG) {
                 pack_state_set_state(PS_FIRE_COOLDOWN);
-                const uint32_t slowdown_duration = 1000;
-                const uint32_t speedup_duration = 4000;
-                uint32_t target = afterlife_target_speed_x();
-                const uint32_t max_slow = target << 15;
-
-                g_cyclotron_controller.enqueue(std::make_unique<CallbackAction>([=]() { cy_speed_ramp_go(max_slow, slowdown_duration); }));
-                g_cyclotron_controller.enqueue(std::make_unique<WaitAction>(slowdown_duration));
-                g_cyclotron_controller.enqueue(std::make_unique<CallbackAction>([=]() {
-                    cy_speed_ramp_go(target << 16, speedup_duration);
-                }));
-                g_cyclotron_controller.enqueue(std::make_unique<WaitAction>(speedup_duration));
-                g_cyclotron_controller.enqueue(std::make_unique<CallbackAction>([]() {
-                    sound_stop();
-                    hum_monitor();
-                    AnimationConfig config;
-                    config.speed = adj_to_ms_cycle(PC_SPEED_DEFAULT, false, false);
-                    config.color = CRGB(powercell_color.r, powercell_color.g, powercell_color.b);
-                    config.leds = g_powercell_leds;
-                    config.num_leds = NUM_LEDS_POWERCELL;
-                    g_powercell_controller.play(std::make_unique<ScrollAnimation>(), config);
-                    pack_state_set_state(PS_IDLE);
-                }));
-
+                cooldown_start_ms = to_ms_since_boot(get_absolute_time());
+                cooldown_phase = 0;
+                cy_speed_ramp_go(afterlife_target_speed_x() << 15,
+                                 COOLDOWN_SLOWDOWN_MS);
             } else {
                 pack_state_set_state(PS_IDLE);
             }
             fire_department(1);
-            g_future_controller.stop();
             clear_fire_tap();
         } else if (temperature >=
                    pack_heat_settings[config_pack_type()].start_beep) {

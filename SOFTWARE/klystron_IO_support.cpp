@@ -13,6 +13,7 @@
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
 #include "hardware/gpio.h"
+#include "hardware/sync.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -93,9 +94,9 @@ void init_gpio(void) {
     gpio_init(GPO_NBUSY_TO_WAND);
     gpio_set_dir(GPO_NBUSY_TO_WAND, GPIO_OUT);
     gpio_put(GPO_NBUSY_TO_WAND, 1);
-    gpio_init(GPO_VENT_LIGHT);
-    gpio_set_dir(GPO_VENT_LIGHT, GPIO_OUT);
-    gpio_put(GPO_VENT_LIGHT, 0);
+    gpio_init(GPO_VENT_RELAY);
+    gpio_set_dir(GPO_VENT_RELAY, GPIO_OUT);
+    gpio_put(GPO_VENT_RELAY, 0);
     gpio_init(GPO_MUTE);
     gpio_put(GPO_MUTE, 1);
     gpio_set_dir(GPO_MUTE, GPIO_OUT);
@@ -338,24 +339,37 @@ bool vent_sw(void) { return (user_switches & USER_SWITCH_VENT_MASK); }
 bool wand_standby_sw(void) { return (!pu_sw() && vent_sw()); }
 
 // --- Flag clearing functions ---
+//
+// These run in the main loop while the timer ISR also sets and clears bits in
+// user_switch_flags. A bare `flags &= ~mask` is a load/modify/store on the
+// M0+, and an ISR firing between the load and the store would have its
+// freshly-set bit erased by the store - a silently dropped song toggle or
+// power-up request. Masking interrupts around the read-modify-write closes
+// that window; the critical section is three instructions long.
 void clear_fire_tap(void) {
     // Only the tap event is cleared here. The held-off flag tracks the state
     // of the button itself and is owned by check_fire_switch_isr().
+    uint32_t irq_state = save_and_disable_interrupts();
     user_switch_flags &= ~USER_SWITCH_FLAG_FIRE_TAP_MASK;
+    restore_interrupts(irq_state);
 }
 void clear_song_toggle(void) {
+    uint32_t irq_state = save_and_disable_interrupts();
     user_switch_flags &= ~USER_SWITCH_FLAG_SONG_TOGGLE_MASK;
+    restore_interrupts(irq_state);
 }
 void clear_pack_pu_req(void) {
+    uint32_t irq_state = save_and_disable_interrupts();
     user_switch_flags &= ~USER_SWITCH_FLAG_PACK_PU_REQ_MASK;
+    restore_interrupts(irq_state);
 }
 
 // --- Direct GPIO control ---
 void nsignal_to_wandlights(bool autovent) {
     gpio_put(GPO_NBUSY_TO_WAND, autovent ? 0 : 1);
 }
-void vent_light_on(bool turn_on) {
-    gpio_put(GPO_VENT_LIGHT, turn_on ? 1 : 0);
+void vent_relay_on(bool turn_on) {
+    gpio_put(GPO_VENT_RELAY, turn_on ? 1 : 0);
 }
 void mute_audio(void) { gpio_put(GPO_MUTE, 1); }
 void unmute_audio(void) { gpio_put(GPO_MUTE, 0); }

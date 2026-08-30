@@ -38,7 +38,7 @@ This matrix must be fully tested and passed before submitting changes. `N` refer
 | **Party Mode** | For each N in {4,24,32,40} | All N LEDs participate in party patterns. Remainder off. |
 | **AFTERLIFE Mode**| For each N in {4,24,32,40} | All N LEDs participate in AFTERLIFE animation. Remainder off. |
 | **Powercell** | Normal Operation | Powercell light scrolls from bottom to top endlessly. Does not stall. |
-| **Future Light** | Firing the wand | N-Filter light activates only during firing states. |
+| **Future Light** | Venting | N-Filter strip animates only during vent sequences; the vent relay output is held on for the same duration. |
 | **TVG Lights** | Normal Operation | TVG patterns run as documented. Remainder LEDs are off. |
 | **TVG Fire Timing** | Wand lights attached, ear tap (100 ms pulse) | Weapon mode changes. Nothing fires, and the wand stays in step with the pack. |
 | | Wand lights attached, quick fire tap (180 ms pulse) | Short burst of firing. Mode does **not** change. |
@@ -51,10 +51,12 @@ This matrix must be fully tested and passed before submitting changes. `N` refer
 ## 3. Control References
 
 - **ADJ1 Potentiometer**: Controls the number of active LEDs in the cyclotron ring (`N`).
-  - Position 1: N=4
-  - Position 2: N=24
-  - Position 3: N=32
-  - Position 4: N=40
+  Changing it while the pack is off shows a confirmation on the ring
+  (readable even with fewer physical LEDs than `N`):
+  - Position 1: N=4 — solid red
+  - Position 2: N=24 — solid green
+  - Position 3: N=32 — solid blue
+  - Position 4: N=40 — scrolling rainbow
 - **DIP Switches**:
   - **1 (PackSel0)** & **2 (PackSel1)**: Select pack variant (Classic, TVG, Afterlife).
   - **3 (Heat)**: Enables heating effects.
@@ -66,11 +68,27 @@ This matrix must be fully tested and passed before submitting changes. `N` refer
 
 ## 4. Key Code Modules
 
-- **Cyclotron Logic**: `SOFTWARE/cyclotron_sequences.cpp`
-- **Powercell Logic**: `SOFTWARE/powercell_sequences.cpp`
-- **Future/N-Filter Logic**: `SOFTWARE/future_sequences.cpp`
+- **Animation Effects (all strips)**: `SOFTWARE/animations.cpp` with the
+  controller framework in `SOFTWARE/animation_controller.cpp`
 - **Party Mode Logic**: `SOFTWARE/party_sequences.cpp`
+- **Strip Globals/Colors**: `SOFTWARE/cyclotron_sequences.cpp`,
+  `SOFTWARE/powercell_sequences.cpp`, `SOFTWARE/future_sequences.cpp`
 - **Input Handling (DIPs, Pots)**: `SOFTWARE/monitors.cpp`, `SOFTWARE/klystron_IO_support.cpp`
 - **State Machine**: `SOFTWARE/pack_state.cpp`
 - **LED Driver Abstraction**: `SOFTWARE/addressable_LED_support.cpp`
 - **Configuration Data**: `SOFTWARE/pack_config.cpp`
+
+## 5. Concurrency Rules
+
+The repeating-timer ISR (`pack_timer_isr`) advances the animation
+controllers and pushes LED frames; the main loop runs the state machine.
+When changing code, preserve these invariants:
+
+- Only the ISR calls `show_leds()` after startup (one warm-up frame in
+  `main()` precedes the timer).
+- `AnimationController` mutators run in the main loop; nothing in ISR
+  context may allocate or free (finished animations are retired and
+  destroyed by `pack_animations_reap()` in the main loop).
+- No sound-module I/O (UART writes, BUSY-pin waits) from ISR context.
+- Read-modify-writes on `user_switch_flags` outside the ISR must mask
+  interrupts (see the `clear_*` helpers).
