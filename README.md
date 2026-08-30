@@ -229,12 +229,13 @@ what the animations are doing.
 
 ## Flashing firmware
 
-1. Hold down the **BOOTSEL** button on the Pico.
-2. While holding the button, connect the board to your computer with USB. A
+1. Make sure all battery power connections are disconnected from the board.
+2. Hold down the **BOOTSEL** button on the Pico.
+3. While holding the button, connect the board to your computer with USB. A
    mass‑storage drive appears.
-3. Copy the generated `.uf2` file to the drive. The Pico automatically
+4. Copy the generated `.uf2` file to the drive. The Pico automatically
    disconnects after the copy completes.
-4. Wait a moment for the copy to finish, then unplug the board from your
-   computer.
+5. Wait a moment for the copy to finish, then unplug the board from your
+   computer. Flashing is complete and battery power may now be reconnected.
 
 

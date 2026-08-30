@@ -49,6 +49,16 @@ void sound_start(uint8_t sound_index) {
 }
 
 /**
+ * @brief Checks if the sound module is currently playing a sound.
+ * @details This is determined by reading the logic level of the sound module's
+ *          `BUSY` pin.
+ * @return true if audio is playing, false otherwise.
+ */
+bool sound_is_playing(void) {
+    return (gpio_get(pack_sound_busy_pin) == pack_sound_busy_level);
+}
+
+/**
  * @brief Waits until the current sound finishes playing.
  * @details This is a blocking function that polls the sound module's busy
  *          status pin. It can be configured to abort early if the user triggers
@@ -63,7 +73,7 @@ void sound_wait_til_end(bool fire, bool shutdown) {
         i++;
         sleep_ms(10);
     }
-    while (gpio_get(pack_sound_busy_pin) == pack_sound_busy_level) {
+    while (sound_is_playing()) {
         sleep_ms(10);
         if (fire && fire_sw())
             break;
@@ -73,21 +83,11 @@ void sound_wait_til_end(bool fire, bool shutdown) {
 }
 
 /**
- * @brief Checks if the sound module is currently playing a sound.
- * @details This is determined by reading the logic level of the sound module's
- *          `BUSY` pin.
- * @return true if audio is playing, false otherwise.
- */
-bool sound_is_playing(void) {
-    return (gpio_get(pack_sound_busy_pin) == pack_sound_busy_level);
-}
-
-/**
  * @brief Stops the currently playing sound immediately.
  * @details Sends the "stop playback" command sequence over UART.
  */
 void sound_stop(void) {
-    if (gpio_get(pack_sound_busy_pin) == pack_sound_busy_level) {
+    if (sound_is_playing()) {
         uart_puts(uart0, "\x7E\xFF\x06");
         uart_putc_raw(uart0, '\x16');
         uart_putc_raw(uart0, '\x00');
@@ -105,7 +105,7 @@ void sound_stop(void) {
  *       board's command set.
  */
 void sound_pause(void) {
-    if (gpio_get(pack_sound_busy_pin) == pack_sound_busy_level) {
+    if (sound_is_playing()) {
         uart_puts(uart0, "\x7E\xFF\x06");
         uart_putc_raw(uart0, '\x0E');
         uart_putc_raw(uart0, '\x00');

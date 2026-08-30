@@ -632,11 +632,11 @@ void ring_monitor(void) {
 
   // On first run, map the raw value without hysteresis.
   if (last_num_pixels == 0) {
-    if (raw < 0x180) {
+    if (raw < 0x3FF) {
       last_num_pixels = 4;
-    } else if (raw < 0x800) {
+    } else if (raw < 0x7FF) {
       last_num_pixels = 24;
-    } else if (raw < 0xE80) {
+    } else if (raw < 0xBFE) {
       last_num_pixels = 32;
     } else {
       last_num_pixels = 40;
@@ -648,23 +648,23 @@ void ring_monitor(void) {
 
   switch (last_num_pixels) {
   case 4:
-    if (raw > 0x180 + HYSTERESIS)
+    if (raw > 0x3FF + HYSTERESIS)
       current_num_pixels = 24;
     break;
   case 24:
-    if (raw < 0x180 - HYSTERESIS)
+    if (raw < 0x3FF - HYSTERESIS)
       current_num_pixels = 4;
-    else if (raw > 0x800 + HYSTERESIS)
+    else if (raw > 0x7FF + HYSTERESIS)
       current_num_pixels = 32;
     break;
   case 32:
-    if (raw < 0x800 - HYSTERESIS)
+    if (raw < 0x7FF - HYSTERESIS)
       current_num_pixels = 24;
-    else if (raw > 0xE80 + HYSTERESIS)
+    else if (raw > 0xBFE + HYSTERESIS)
       current_num_pixels = 40;
     break;
   case 40:
-    if (raw < 0xE80 - HYSTERESIS)
+    if (raw < 0xBFE - HYSTERESIS)
       current_num_pixels = 32;
     break;
   default:
