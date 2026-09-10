@@ -46,12 +46,31 @@ jobs:
         working-directory: SOFTWARE
         run: cmake --build build -- -v
 
+      # The build produces the stock firmware plus one static-ring variant per
+      # supported cyclotron LED count (see SOFTWARE/CMakeLists.txt). Fail loudly
+      # if any of them stops being produced.
+      - name: Verify firmware images
+        working-directory: SOFTWARE
+        run: |
+          missing=0
+          for image in klystron klystron_static_04_leds klystron_static_24_leds \
+                       klystron_static_32_leds klystron_static_40_leds; do
+            if [ -f "build/${image}.uf2" ]; then
+              echo "found build/${image}.uf2"
+            else
+              echo "::error::expected firmware image build/${image}.uf2 was not built"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
       - name: Collect UF2 artifacts
         if: always()
         run: |
           mkdir -p SOFTWARE/artifacts
           if [ -d SOFTWARE/build ]; then
             find SOFTWARE/build -type f -name "*.uf2" -exec cp {} SOFTWARE/artifacts/ \;
+            ls -l SOFTWARE/artifacts
           else
             echo "No SOFTWARE/build directory found; skipping UF2 collection."
           fi

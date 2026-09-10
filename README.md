@@ -155,6 +155,31 @@ For a complete gallery grouped by light type, LED count, and mode, see
   prior to v1.2.0 showed the scrolling rainbow at every setting, which was
   easy to misread as "confirmed" on smaller rings.
 
+### Fixed-ring firmware (no potentiometers)
+
+The adjustment pots are a common field failure, and a broken pot leaves the
+pack stuck at whatever the dead wiper happens to read. For those boards the
+build also produces four *static* firmware images that never touch the pots:
+
+| Firmware image | Cyclotron LEDs | ADJ0 (speed) | ADJ1 (ring size) |
+|----------------|----------------|--------------|------------------|
+| `klystron_static_04_leds.uf2` | 4 | ignored | ignored |
+| `klystron_static_24_leds.uf2` | 24 | ignored | ignored |
+| `klystron_static_32_leds.uf2` | 32 | ignored | ignored |
+| `klystron_static_40_leds.uf2` | 40 | ignored | ignored |
+
+In these builds the ADC is never initialized and never sampled, so a shorted,
+open or missing pot has no effect at all. The ring size is compiled in and
+cannot be changed from the hardware, so no ring-size confirmation animation is
+shown. The powercell animation runs at the midpoint of the normal speed range,
+which is where a mid-travel ADJ0 would put it; the heat effect (dip switch 3)
+still speeds it up as the pack warms, because that is a dip switch feature and
+not a pot feature. Everything else — pack types, party mode, the monster
+Easter egg, hum, TVG weapon cycling — is identical to the stock firmware.
+
+Pick the image that matches the number of LEDs physically installed in the
+cyclotron. Flashing `klystron.uf2` restores the normal pot-driven behavior.
+
 ## Test mode
 To enter test mode, set all CONFIG dip switches to **ON** and hold both the
 FIRE and SONG inputs active while applying power. Press **FIRE** to advance
@@ -226,6 +251,14 @@ what the animations are doing.
 3. Open this repository in VS Code. From the command palette (`Ctrl+Shift+P`)
    run **Pico: Configure Project** and then **Pico: Build Project**. The build
    produces a `.uf2` firmware file inside the `build` directory.
+
+Every build produces five images: `klystron.uf2` (the stock firmware) plus the
+four fixed-ring variants described under
+[Fixed-ring firmware](#fixed-ring-firmware-no-potentiometers). The GitHub
+Actions **Build** workflow builds the same five and uploads them together as
+the `pico-uf2` artifact. To add or change a fixed ring size, edit
+`KLYSTRON_STATIC_LED_COUNTS` in `SOFTWARE/CMakeLists.txt`; the sources read the
+value through `STATIC_CYCLOTRON_LED_COUNT` (see `SOFTWARE/build_options.h`).
 
 ## Flashing firmware
 

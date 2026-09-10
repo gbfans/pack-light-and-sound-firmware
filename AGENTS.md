@@ -14,7 +14,16 @@ This project uses CMake and the Raspberry Pi Pico SDK.
 1.  Open this repository in VS Code.
 2.  From the command palette (`Ctrl+Shift+P`), run **Pico: Configure Project**.
 3.  From the command palette, run **Pico: Build Project**.
-4.  The build will produce a `klystron.uf2` firmware file inside the `build` directory.
+4.  The build will produce a `klystron.uf2` firmware file inside the `build` directory,
+    along with four fixed-ring variants (`klystron_static_04_leds.uf2`,
+    `klystron_static_24_leds.uf2`, `klystron_static_32_leds.uf2`,
+    `klystron_static_40_leds.uf2`). Those variants are built from the same sources
+    with `STATIC_CYCLOTRON_LED_COUNT` defined: they never read the ADJ
+    potentiometers, hard-code the cyclotron ring size, and fix the animation speed
+    at the midpoint of the normal range. See `SOFTWARE/build_options.h` and the
+    `add_klystron_firmware()` function in `SOFTWARE/CMakeLists.txt`. Any new code
+    that reads `adj_pot[]` must be guarded with `#if !POTS_DISABLED` (or routed
+    through `adj_to_ms_cycle()` / `ring_monitor()`, which already are).
 
 ### Flashing
 1.  Hold down the **BOOTSEL** button on the Pico board.
@@ -40,6 +49,7 @@ This matrix must be fully tested and passed before submitting changes. `N` refer
 | **Powercell** | Normal Operation | Powercell light scrolls from bottom to top endlessly. Does not stall. |
 | **Future Light** | Venting | N-Filter strip animates only during vent sequences; the vent relay output is held on for the same duration. |
 | **TVG Lights** | Normal Operation | TVG patterns run as documented. Remainder LEDs are off. |
+| **Fixed-ring builds** | Each `klystron_static_NN_leds.uf2`, pots turned fully both ways | Exactly `NN` LEDs active, no ring-size confirmation, no change in speed or ring size at any pot position. |
 | **TVG Fire Timing** | Wand lights attached, ear tap (100 ms pulse) | Weapon mode changes. Nothing fires, and the wand stays in step with the pack. |
 | | Wand lights attached, quick fire tap (180 ms pulse) | Short burst of firing. Mode does **not** change. |
 | | Wand lights attached, fire held | Fires continuously, starting ~135 ms in. Mode does not change. |
@@ -51,6 +61,7 @@ This matrix must be fully tested and passed before submitting changes. `N` refer
 ## 3. Control References
 
 - **ADJ1 Potentiometer**: Controls the number of active LEDs in the cyclotron ring (`N`).
+  (Not read at all in the fixed-ring firmware variants, where `N` is compiled in.)
   Changing it while the pack is off shows a confirmation on the ring
   (readable even with fewer physical LEDs than `N`):
   - Position 1: N=4 — solid red

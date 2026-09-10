@@ -11,6 +11,7 @@
 
 #include "board_test.h"
 #include "addressable_LED_support.h"
+#include "build_options.h"
 #include "klystron_IO_support.h"
 #include "pico/stdlib.h"
 #include "sound_module.h"
@@ -80,7 +81,8 @@ static void test_color(CRGB color, int delay) {
  * @details This is a blocking function that cycles through a series of tests:
  *          - Plays test sounds to verify the sound module.
  *          - Lights up all LEDs in different colors to check for dead pixels.
- *          - Displays potentiometer readings on the powercell.
+ *          - Displays potentiometer readings on the powercell (in a
+ *            pots-disabled build, the fixed cyclotron ring size instead).
  *          - Displays switch states on the powercell.
  *          - Toggles the vent light.
  *          The user advances through the test steps by pressing the fire button.
@@ -128,6 +130,15 @@ void board_test(void) {
 
   sound_start(0x17);
   sound_wait_til_end(false, false);
+#if POTS_DISABLED
+  // No pots to read in this build. Light the fixed cyclotron ring instead so
+  // the tester can count the LEDs and confirm which variant is flashed.
+  fill_solid(g_cyclotron_leds, STATIC_CYCLOTRON_LED_COUNT, CRGB(0, 0, 96));
+  do {
+    sleep_ms(50);
+  } while (!fire_sw());
+  fill_solid(g_cyclotron_leds, NUM_LEDS_CYCLOTRON, CRGB::Black);
+#else
   do {
     read_adj_potentiometers(true);
     g_powercell_leds[4] = (adj_pot[0] > 4050) ? CRGB::Green : CRGB::Black;
@@ -142,6 +153,7 @@ void board_test(void) {
     g_powercell_leds[NUM_LEDS_POWERCELL - 5] = (adj_pot[1] < 50) ? CRGB::Red : CRGB::Black;
     sleep_ms(50);
   } while (!fire_sw());
+#endif
 
   fill_solid(g_powercell_leds, NUM_LEDS_POWERCELL, CRGB::Black);
   sleep_ms(5);

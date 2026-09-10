@@ -10,6 +10,7 @@
 
 #include "cyclotron_sequences.h"
 #include "addressable_LED_support.h"
+#include "build_options.h"
 #include "pack_state.h"
 #include <FastLED.h>
 #include <string.h>
@@ -18,7 +19,13 @@
 volatile CRGB cyclotron_color;
 volatile uint8_t cyclotron_color_set_size = 1;
 volatile CRGB cyclotron_color_set[5];
+#if POTS_DISABLED
+// Fixed-ring build: start at the compiled-in size so the very first frame is
+// already correct, and never let ADJ1 move it (see ring_monitor()).
+volatile uint8_t g_cyclotron_led_count = STATIC_CYCLOTRON_LED_COUNT;
+#else
 volatile uint8_t g_cyclotron_led_count = NUM_LEDS_CYCLOTRON;
+#endif
 
 /** 1-based LED positions of the four classic cyclotron windows for each
  *  supported ring size. */

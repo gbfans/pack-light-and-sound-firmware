@@ -10,6 +10,7 @@
  */
 
 #include "klystron_IO_support.h"
+#include "build_options.h"
 #include "pico/stdlib.h"
 #include "hardware/adc.h"
 #include "hardware/gpio.h"
@@ -21,7 +22,11 @@ extern "C" {
 
 // === Global I/O state variables ===
 /** @brief Smoothed ADC readings for the two potentiometers. */
+#if POTS_DISABLED
+volatile uint16_t adj_pot[2] = {POT_FIXED_READING, POT_FIXED_READING};
+#else
 volatile uint16_t adj_pot[2] = {0, 0};
+#endif
 /** @brief Debounced state of the 5-position DIP switch block. */
 volatile uint8_t config_dip_sw = 0;
 /** @brief Debounced state of the user-facing switches (power, fire, etc.). */
@@ -35,8 +40,14 @@ volatile uint8_t user_switch_flags = 0;
  *          a smoothed, more stable output value.
  * @param average If true, returns the smoothed average. If false, returns
  *                the raw instantaneous reading.
+ * @note In a pots-disabled build (`STATIC_CYCLOTRON_LED_COUNT`) this does
+ *       nothing at all - the ADC is never sampled.
  */
 void read_adj_potentiometers(bool average) {
+#if POTS_DISABLED
+    // The pots are not read in this build; adj_pot[] keeps its fixed value.
+    (void)average;
+#else
     static uint16_t multiple_readings[2][4] = {0};
     for (int i = 3; i >= 1; i--) {
         multiple_readings[0][i] = multiple_readings[0][i - 1];
@@ -54,15 +65,21 @@ void read_adj_potentiometers(bool average) {
         average ? (multiple_readings[1][0] + multiple_readings[1][1] +
                    multiple_readings[1][2] + multiple_readings[1][3] + 2) >> 2
                 : multiple_readings[1][0];
+#endif
 }
 
 /**
  * @brief Initializes the ADC hardware.
  * @details Configures the ADC and the two GPIO pins (26, 27) used for
  *          potentiometer inputs. It performs several initial readings to
- *          populate the smoothing buffer.
+ *          populate the smoothing buffer. In a pots-disabled build
+ *          (`STATIC_CYCLOTRON_LED_COUNT`) this is a no-op.
  */
 void init_adc(void) {
+#if POTS_DISABLED
+    // Nothing reads the ADC in this build, so the peripheral and the two pot
+    // pins are left untouched (GPIO 26/27 stay in their reset state).
+#else
     adc_init();
     adc_gpio_init(26);
     adc_gpio_init(27);
@@ -70,6 +87,7 @@ void init_adc(void) {
     read_adj_potentiometers(true);
     read_adj_potentiometers(true);
     read_adj_potentiometers(true);
+#endif
 }
 
 /**
