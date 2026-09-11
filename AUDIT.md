@@ -34,7 +34,7 @@
 > - **E** — README/SOFTWARE README/AGENTS.md corrected (module names,
 >   PS_FEEDBACK, ISR-vs-main description, badge, ADJ0 wording, Cylon claim);
 >   AGENTS.md gained a concurrency-rules section; firmware version bumped
->   to 1.2.0.
+>   to 1.1.4.
 >
 > The findings text below is kept as written for the audit record.
 
