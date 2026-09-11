@@ -15,6 +15,7 @@
 #include "addressable_LED_support.h"
 #include "animation_controller.h"
 #include "animations.h"
+#include "build_options.h"
 #include "cyclotron_sequences.h"
 #include "future_sequences.h"
 #include "heat.h"
@@ -259,18 +260,30 @@ void monster_monitor(void) {
  *                       the ADJ0 potentiometer is ignored and a default
  *                       midpoint speed is used instead.
  * @return Computed cycle duration in milliseconds.
+ * @note In a pots-disabled build (`STATIC_CYCLOTRON_LED_COUNT`) the ADJ0
+ *       reading is never used: the midpoint speed is always the starting
+ *       point, whatever @p adj_select says.
  */
 uint16_t adj_to_ms_cycle(uint8_t adj_select, bool heat_effect,
                          bool apply_cy_speed) {
+  const uint32_t midpoint_ms =
+      pack_adj_min_ms + ((pack_adj_max_ms - pack_adj_min_ms) >> 1);
   uint32_t temp_calc = 0;
   if (apply_cy_speed) {
     // Use midpoint value so ADJ0 does not influence cyclotron speed
-    temp_calc = pack_adj_min_ms + ((pack_adj_max_ms - pack_adj_min_ms) >> 1);
-    temp_calc = (temp_calc * cy_speed_multiplier) >> 16;
+    temp_calc = (midpoint_ms * cy_speed_multiplier) >> 16;
   } else {
+#if POTS_DISABLED
+    // ADJ0 is never sampled in this build, so the base speed is the same
+    // midpoint the cyclotron already uses. The heat effect below is a DIP
+    // switch feature and still applies.
+    (void)adj_select;
+    temp_calc = midpoint_ms;
+#else
     temp_calc = pack_adj_min_ms + (((pack_adj_max_ms - pack_adj_min_ms) *
                                     (4095 - adj_pot[adj_select & 1])) >>
                                    12);
+#endif
     if (heat_effect) {
       uint32_t divisor =
           pack_heat_settings[config_pack_type()].start_autovent >> 7;
@@ -304,7 +317,9 @@ static void update_animation_speed(AnimationController &controller,
 void adj_monitor(void) {
   bool heating_effect =
       config_dip_sw & DIP_HEAT_MASK; // is heat effect enabled?
+#if !POTS_DISABLED
   read_adj_potentiometers(true);     // read the ADC and average the samples
+#endif
 
   static uint16_t last_pc_speed = 0;
 
@@ -619,8 +634,17 @@ void vent_monitor(void) {
  *          rings with fewer physical LEDs than the selected count. The
  *          animation is handled by a temporary pack state so it does not
  *          interfere with normal cyclotron control.
+ * @note In a pots-disabled build (`STATIC_CYCLOTRON_LED_COUNT`) this only
+ *       re-asserts the compiled-in ring size; the pot is never sampled and
+ *       the size can never change, so no confirmation is shown.
  */
 void ring_monitor(void) {
+#if POTS_DISABLED
+  // ADJ1 is not read in this build. The ring size is fixed at compile time,
+  // so there is nothing to detect and no feedback animation to show - just
+  // hold the count the firmware was built for.
+  g_cyclotron_led_count = STATIC_CYCLOTRON_LED_COUNT;
+#else
   if (party_mode_is_active())
     return;
 
@@ -686,4 +710,5 @@ void ring_monitor(void) {
       feedback_request();
     }
   }
+#endif
 }

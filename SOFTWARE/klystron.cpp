@@ -107,7 +107,8 @@ int main(void) {
     show_leds();
     init_pack_timer();
 
-    // Set initial cyclotron ring size from the potentiometer
+    // Set initial cyclotron ring size (from the potentiometer, or from the
+    // compiled-in value on a static-ring build)
     ring_monitor();
 
     // Initialize the signal to the wand lights

@@ -111,29 +111,62 @@ target_link_libraries(RAMP PUBLIC pico_stdlib m fastled)
 set_source_files_properties(libs/RAMP/Ramp.cpp libs/RAMP/RampCRGB.cpp PROPERTIES COMPILE_OPTIONS "-include${CMAKE_CURRENT_SOURCE_DIR}/Arduino.h")
 target_compile_definitions(RAMP PUBLIC FASTLED_RP2040=1 PICO_RP2040=1 ARDUINO=100 ARDUINO_ARCH_RP2040=1)
 
-# Add executable. Default name is the project name, version 0.1
-add_executable(klystron)
+# Sources shared by every firmware image
+set(KLYSTRON_SOURCES
+  klystron.cpp heat.cpp monster.cpp led_patterns.cpp sound.cpp monitors.cpp
+  addressable_LED_support.cpp board_test.cpp klystron_IO_support.cpp
+  sound_module.cpp pack.cpp pack_state.cpp powercell_sequences.cpp
+  cyclotron_sequences.cpp future_sequences.cpp pack_helpers.cpp pack_config.cpp
+  party_sequences.cpp animations.cpp animation_controller.cpp action.cpp)
 
-target_sources(klystron PRIVATE klystron.cpp heat.cpp monster.cpp led_patterns.cpp sound.cpp monitors.cpp addressable_LED_support.cpp board_test.cpp klystron_IO_support.cpp sound_module.cpp pack.cpp pack_state.cpp powercell_sequences.cpp cyclotron_sequences.cpp future_sequences.cpp pack_helpers.cpp pack_config.cpp party_sequences.cpp animations.cpp animation_controller.cpp action.cpp)
+# Define one firmware image. Any extra arguments are added as private compile
+# definitions, which is how the build spins the static-ring variants below out
+# of the same sources.
+function(add_klystron_firmware target)
+  add_executable(${target})
 
-# After add_executable(klystron) and target_sources(...)
-# Make the app see RP2040 + Arduino shim too
-target_compile_definitions(klystron PRIVATE
-  FASTLED_RP2040=1
-  PICO_RP2040=1
-  ARDUINO=100
-  ARDUINO_ARCH_RP2040=1
-  FW_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
-  FW_VERSION_MINOR=${PROJECT_VERSION_MINOR}
-  FW_VERSION_PATCH=${PROJECT_VERSION_PATCH}
-)
+  target_sources(${target} PRIVATE ${KLYSTRON_SOURCES})
 
-# Only C++ files should auto-include Arduino.h
-target_compile_options(klystron PRIVATE
-  $<$<COMPILE_LANGUAGE:CXX>:-include${CMAKE_CURRENT_SOURCE_DIR}/Arduino.h>
-)
+  # Make the app see RP2040 + Arduino shim too
+  target_compile_definitions(${target} PRIVATE
+    FASTLED_RP2040=1
+    PICO_RP2040=1
+    ARDUINO=100
+    ARDUINO_ARCH_RP2040=1
+    FW_VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+    FW_VERSION_MINOR=${PROJECT_VERSION_MINOR}
+    FW_VERSION_PATCH=${PROJECT_VERSION_PATCH}
+    ${ARGN}
+  )
 
-target_include_directories(klystron PRIVATE "." "libs" "libs/FastLED" "libs/RAMP")
+  # Only C++ files should auto-include Arduino.h
+  target_compile_options(${target} PRIVATE
+    $<$<COMPILE_LANGUAGE:CXX>:-include${CMAKE_CURRENT_SOURCE_DIR}/Arduino.h>
+  )
 
-target_link_libraries(klystron PRIVATE pico_stdlib hardware_gpio hardware_adc hardware_dma hardware_pio hardware_irq hardware_timer hardware_clocks hardware_sync fastled RAMP m)
-pico_add_extra_outputs(klystron)
+  target_include_directories(${target} PRIVATE "." "libs" "libs/FastLED" "libs/RAMP")
+
+  target_link_libraries(${target} PRIVATE pico_stdlib hardware_gpio hardware_adc hardware_dma hardware_pio hardware_irq hardware_timer hardware_clocks hardware_sync fastled RAMP m)
+  pico_add_extra_outputs(${target})
+endfunction()
+
+# Stock firmware: both adjustment potentiometers live.
+add_klystron_firmware(klystron)
+
+# Static-ring firmware for packs whose adjustment pots have failed or been
+# removed. These builds never read the ADC: the cyclotron ring size is fixed
+# at the number in the file name and the ADJ0 speed adjustment is gone too
+# (see build_options.h). Every image is built alongside the stock firmware, so
+# `cmake --build build` and the CI Build workflow produce all five .uf2 files.
+set(KLYSTRON_STATIC_LED_COUNTS 4 24 32 40)
+foreach(led_count IN LISTS KLYSTRON_STATIC_LED_COUNTS)
+  # Zero-pad single digits so the images sort and read consistently:
+  # klystron_static_04_leds.uf2 ... klystron_static_40_leds.uf2
+  if(led_count LESS 10)
+    set(led_label "0${led_count}")
+  else()
+    set(led_label "${led_count}")
+  endif()
+  add_klystron_firmware(klystron_static_${led_label}_leds
+    STATIC_CYCLOTRON_LED_COUNT=${led_count})
+endforeach()
