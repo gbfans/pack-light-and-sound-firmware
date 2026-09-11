@@ -55,7 +55,7 @@ Two adjustment potentiometers feed ADC channels on the Pico:
 - **ADJ1** – selects the logical cyclotron LED count (4, 24, 32 or 40).
   Changing it while the pack is off shows a confirmation on the ring:
   solid red = 4, solid green = 24, solid blue = 32, scrolling rainbow = 40
-  (firmware v1.2.0 and later; earlier firmware showed the rainbow at every
+  (firmware v1.1.4 and later; earlier firmware showed the rainbow at every
   setting).
 
 ## User Switch Inputs
