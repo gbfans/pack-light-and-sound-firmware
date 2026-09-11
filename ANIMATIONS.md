@@ -54,7 +54,7 @@ Activate by starting a song with the song switch, then tapping the fire button w
 
 ## ADJ1 Ring-Size Feedback
 
-Turning ADJ1 while the pack is off confirms the selected cyclotron size on the ring (firmware v1.2.0 and later). Each setting has an unmistakable look, so the setting reads correctly even on rings with fewer physical LEDs than the selected count. Firmware prior to v1.2.0 showed the scrolling rainbow at every setting.
+Turning ADJ1 while the pack is off confirms the selected cyclotron size on the ring (firmware v1.1.4 and later). Each setting has an unmistakable look, so the setting reads correctly even on rings with fewer physical LEDs than the selected count. Firmware prior to v1.2.0 showed the scrolling rainbow at every setting.
 
 | 4 LEDs — solid red | 24 LEDs — solid green | 32 LEDs — solid blue | 40 LEDs — scrolling rainbow |
 | --- | --- | --- | --- |
