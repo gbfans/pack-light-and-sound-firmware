@@ -152,7 +152,7 @@ For a complete gallery grouped by light type, LED count, and mode, see
   green = 24**, **solid blue = 32**, **scrolling rainbow = 40** — so a ring
   with only 4 physical LEDs still shows unambiguously which setting is
   selected (any color other than solid red means keep turning). Firmware
-  prior to v1.2.0 showed the scrolling rainbow at every setting, which was
+  prior to v1.1.4 showed the scrolling rainbow at every setting, which was
   easy to misread as "confirmed" on smaller rings.
 
 ### Fixed-ring firmware (no potentiometers)
